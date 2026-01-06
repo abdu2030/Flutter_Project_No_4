@@ -11,6 +11,10 @@ import 'package:eduvox/shared/screens/video_player_screen.dart';
 import 'package:eduvox/shared/screens/document_viewer_screen.dart';
 import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
 import 'package:eduvox/shared/dialogs/rating_dialog.dart';
+import 'package:uuid/uuid.dart';
+import 'package:eduvox/core/services/chapa_service.dart';
+import 'package:eduvox/shared/screens/chapa_payment_screen.dart';
+
 
 class StudentCourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -26,6 +30,9 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
   final CourseService _courseService = CourseService();
   final String _currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
+  String? _currentUserEmail;
+  String? _currentUserFirstName;
+  String? _currentUserLastName;
   bool _isEnrolled = false;
   bool _isLoading = true;
   bool _isEnrolling = false; // Used for button loading state
@@ -36,6 +43,29 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
   void initState() {
     super.initState();
     _initData();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .get();
+
+      if (userDoc.exists && mounted) {
+        final data = userDoc.data()!;
+        setState(() {
+          _currentUserEmail = data['email'] ?? '';
+          _currentUserFirstName =
+              data['firstName'] ?? data['name']?.split(' ').first ?? 'User';
+          _currentUserLastName =
+              data['lastName'] ?? data['name']?.split(' ').last ?? '';
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading user data: $e');
+    }
   }
 
   Future<void> _initData() async {
@@ -105,7 +135,142 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
   }
 
   // ✅ ENROLLMENT LOGIC
+  // ✅ MAIN ENROLLMENT METHOD
   Future<void> _enrollInCourse() async {
+    if (_course == null) return;
+
+    // Check if course is FREE or PAID
+    if (_course!.price == 0) {
+      // Free course - enroll directly
+      await _completeFreeEnrollment();
+    } else {
+      // Paid course - initiate payment
+      await _initiatePayment();
+    }
+  }
+
+  // ✅ INITIATE CHAPA PAYMENT
+  Future<void> _initiatePayment() async {
+    setState(() => _isEnrolling = true);
+
+    try {
+      // Generate unique transaction reference
+      final txRef =
+          'EDUVOX-${const Uuid().v4().substring(0, 8).toUpperCase()}-${DateTime.now().millisecondsSinceEpoch}';
+
+      // Create pending payment record in Firestore
+      await FirebaseFirestore.instance.collection('payments').doc(txRef).set({
+        'txRef': txRef,
+        'userId': _currentUserId,
+        'courseId': widget.courseId,
+        'courseTitle': _course!.title,
+        'amount': _course!.price,
+        'currency': 'ETB',
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      // Initialize Chapa payment
+      final response = await ChapaService.initializePayment(
+        amount: _course!.price.toString(),
+        email: _currentUserEmail ?? 'user@example.com',
+        firstName: _currentUserFirstName ?? 'User',
+        lastName: _currentUserLastName ?? '',
+        txRef: txRef,
+        courseId: widget.courseId,
+        courseTitle: _course!.title,
+      );
+
+      if (!mounted) return;
+
+      if (response.success && response.checkoutUrl != null) {
+        setState(() => _isEnrolling = false);
+
+        // Navigate to payment WebView
+        final result = await Navigator.push<ChapaPaymentResult>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChapaPaymentScreen(
+              checkoutUrl: response.checkoutUrl!,
+              txRef: txRef,
+              courseTitle: _course!.title,
+            ),
+          ),
+        );
+
+        // Handle payment result
+        await _handlePaymentResult(result, txRef);
+      } else {
+        setState(() => _isEnrolling = false);
+        _showErrorSnackBar(response.message);
+      }
+    } catch (e) {
+      setState(() => _isEnrolling = false);
+      _showErrorSnackBar('Payment error: $e');
+    }
+  }
+
+  // ✅ HANDLE PAYMENT RESULT
+  Future<void> _handlePaymentResult(
+    ChapaPaymentResult? result,
+    String txRef,
+  ) async {
+    if (result == null) {
+      await _updatePaymentStatus(txRef, 'cancelled');
+      _showErrorSnackBar('Payment was cancelled');
+      return;
+    }
+
+    switch (result.status) {
+      case PaymentStatus.success:
+        setState(() => _isEnrolling = true);
+
+        // Verify payment with Chapa
+        final verification = await ChapaService.verifyPayment(txRef);
+
+        if (verification.isSuccessful) {
+          // Update payment record
+          await _updatePaymentStatus(txRef, 'success');
+          // Complete enrollment
+          await _completePaidEnrollment(txRef);
+        } else {
+          setState(() => _isEnrolling = false);
+          await _updatePaymentStatus(txRef, 'failed');
+          _showErrorSnackBar(
+            'Payment verification failed. Please contact support.',
+          );
+        }
+        break;
+
+      case PaymentStatus.failed:
+        await _updatePaymentStatus(txRef, 'failed');
+        _showErrorSnackBar(result.message ?? 'Payment failed');
+        break;
+
+      case PaymentStatus.cancelled:
+        await _updatePaymentStatus(txRef, 'cancelled');
+        _showErrorSnackBar('Payment was cancelled');
+        break;
+
+      case PaymentStatus.pending:
+        _showWarningSnackBar('Payment is pending. Please try again.');
+        break;
+    }
+  }
+
+  // ✅ UPDATE PAYMENT STATUS
+  Future<void> _updatePaymentStatus(String txRef, String status) async {
+    try {
+      await FirebaseFirestore.instance.collection('payments').doc(txRef).update(
+        {'status': status, 'updatedAt': FieldValue.serverTimestamp()},
+      );
+    } catch (e) {
+      debugPrint('Error updating payment status: $e');
+    }
+  }
+
+  // ✅ COMPLETE FREE ENROLLMENT
+  Future<void> _completeFreeEnrollment() async {
     setState(() => _isEnrolling = true);
 
     try {
@@ -131,13 +296,12 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
             'enrolledAt': FieldValue.serverTimestamp(),
             'progress': 0.0,
             'isCompleted': false,
+            'paidAmount': 0,
           });
 
       if (mounted) {
-        // 3. Show Success Dialog
         await _showEnrollmentSuccessDialog();
 
-        // 4. Navigate to Dashboard
         if (mounted) {
           Navigator.pushAndRemoveUntil(
             context,
@@ -147,19 +311,98 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Enrollment failed: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
+      _showErrorSnackBar('Enrollment failed: $e');
     } finally {
       if (mounted) {
         setState(() => _isEnrolling = false);
       }
     }
+  }
+
+  // ✅ COMPLETE PAID ENROLLMENT
+  Future<void> _completePaidEnrollment(String txRef) async {
+    try {
+      // 1. Add user to Course's student list
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(widget.courseId)
+          .update({
+            'enrolledStudents': FieldValue.arrayUnion([_currentUserId]),
+          });
+
+      // 2. Add Course to User's enrolled list
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .collection('enrolledCourses')
+          .doc(widget.courseId)
+          .set({
+            'courseId': widget.courseId,
+            'title': _course!.title,
+            'instructorName': _course!.instructorName,
+            'thumbnailUrl': _course!.thumbnailUrl,
+            'enrolledAt': FieldValue.serverTimestamp(),
+            'progress': 0.0,
+            'isCompleted': false,
+            'paymentTxRef': txRef,
+            'paidAmount': _course!.price,
+          });
+
+      if (mounted) {
+        await _showEnrollmentSuccessDialog();
+
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const StudentDashboard()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Enrollment failed: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isEnrolling = false);
+      }
+    }
+  }
+
+  // ✅ HELPER SNACKBAR METHODS
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.errorColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  void _showWarningSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 8),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppTheme.warningColor,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
   }
 
   // ✅ RATING LOGIC
@@ -1042,7 +1285,9 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                               Text(
                                 _isEnrolled
                                     ? 'Continue Learning'
-                                    : 'Enroll Now',
+                                    : _course!.price == 0
+                                    ? 'Enroll Now - Free'
+                                    : 'Pay ${_course!.price} ETB',
                                 style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.bold,
