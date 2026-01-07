@@ -885,16 +885,42 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                   ),
             borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(
-            isLocked
-                ? Icons.lock_rounded
-                : isCompleted
-                ? Icons.check_rounded
-                : hasVideo
-                ? Icons.play_arrow_rounded
-                : Icons.description_rounded,
-            color: Colors.white,
-            size: 28,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Main Icon
+              Icon(
+                isLocked
+                    ? Icons.lock_rounded
+                    : isCompleted
+                    ? Icons.check_rounded
+                    : hasVideo
+                    ? Icons.play_arrow_rounded
+                    : Icons.description_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+
+              // Second Icon Overlay (Only if Both and Not Completed/Locked)
+              if (hasBoth && !isLocked && !isCompleted)
+                Positioned(
+                  bottom: 4,
+                  right: 4,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1.5),
+                    ),
+                    child: const Icon(
+                      Icons.description,
+                      color: Colors.white,
+                      size: 8,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
         title: Text(
@@ -909,11 +935,36 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(
-          '${lesson.duration} min',
-          style: TextStyle(
-            fontSize: 12,
-            color: isDark ? Colors.white54 : AppTheme.textSecondary,
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Row(
+            children: [
+              Icon(
+                Icons.access_time_rounded,
+                size: 14,
+                color: isDark ? Colors.white38 : Colors.grey,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                '${lesson.duration} min',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? Colors.white54 : AppTheme.textSecondary,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Content Badges
+              if (hasVideo) _buildContentBadge('Video', Colors.red),
+              if (hasDoc) ...[
+                const SizedBox(width: 6),
+                _buildContentBadge('Doc', Colors.blue),
+              ],
+              if (lesson.isFree && !_isEnrolled) ...[
+                const SizedBox(width: 6),
+                _buildContentBadge('Free', AppTheme.successColor),
+              ],
+            ],
           ),
         ),
         trailing: Icon(
@@ -937,6 +988,26 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
             _openLesson(lesson, allLessons);
           }
         },
+      ),
+    );
+  }
+
+  // ✅ 2. Helper for the colored badges (Video, Doc, Free)
+  Widget _buildContentBadge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
