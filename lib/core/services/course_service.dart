@@ -7,7 +7,28 @@ import '../models/lesson_model.dart';
 class CourseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ✅ Get instructor's courses
+  // ==============================================================================
+  // ✅ FOR STUDENTS: Get Only Published Courses
+  // ==============================================================================
+  Stream<List<CourseModel>> getPublishedCourses() {
+    return _firestore
+        .collection('courses')
+        .where('isPublished', isEqualTo: true) // 👈 THE FIX: Filter drafts
+        .snapshots()
+        .map((snapshot) {
+          final courses = snapshot.docs
+              .map((doc) => CourseModel.fromMap(doc.data()))
+              .toList();
+
+          // Sort by newest first
+          courses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return courses;
+        });
+  }
+
+  // ==============================================================================
+  // ✅ FOR INSTRUCTORS: Get All Courses (Drafts + Published)
+  // ==============================================================================
   Stream<List<CourseModel>> getInstructorCourses(String instructorId) {
     if (instructorId.isEmpty) return Stream.value([]);
 
@@ -147,14 +168,12 @@ class CourseService {
 
     await _firestore.collection('courses').doc(courseId).update({
       'totalLessons': totalLessons,
-      'totalDuration': totalDuration, // Kept as raw minutes for consistency
+      'totalDuration': totalDuration,
       'updatedAt': DateTime.now().toIso8601String(),
     });
   }
 
-  // --------------------------------------------------------------------------
-  // ⭐ NEW: Rate Course Feature
-  // --------------------------------------------------------------------------
+  // ✅ Rate Course Feature
   Future<void> rateCourse(
     String courseId,
     String userId,
@@ -171,30 +190,22 @@ class CourseService {
         throw Exception("Course does not exist!");
       }
 
-      // 1. Check if user already rated (Optional: Allow updating rating)
-      // If you want to allow updates, you'd need to subtract the old rating first.
-      // For now, let's assume one-time rating for simplicity.
       if (userReviewSnapshot.exists) {
         throw Exception("You have already rated this course.");
       }
 
-      // 2. Get current data
       final data = courseSnapshot.data() as Map<String, dynamic>;
       double currentRating = (data['rating'] ?? 0.0).toDouble();
       int currentCount = (data['reviewCount'] ?? 0).toInt();
 
-      // 3. Calculate new average
-      // Formula: ((OldRating * OldCount) + NewRating) / (OldCount + 1)
       double newAverage =
           ((currentRating * currentCount) + newRating) / (currentCount + 1);
 
-      // 4. Update Course Document
       transaction.update(courseRef, {
         'rating': newAverage,
         'reviewCount': currentCount + 1,
       });
 
-      // 5. Create Review Document (to track who voted)
       transaction.set(userReviewRef, {
         'userId': userId,
         'rating': newRating,

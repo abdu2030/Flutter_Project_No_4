@@ -8,6 +8,10 @@ class UserModel {
   final String? profileImage;
   final DateTime createdAt;
 
+  // ✅ NEW FIELDS ADDED
+  final String? phone;
+  final Map<String, dynamic>? socials;
+
   UserModel({
     required this.uid,
     required this.email,
@@ -15,6 +19,8 @@ class UserModel {
     this.name,
     this.profileImage,
     required this.createdAt,
+    this.phone,
+    this.socials,
   });
 
   // Convert to Firestore map
@@ -26,6 +32,9 @@ class UserModel {
       'name': name,
       'profileImage': profileImage,
       'createdAt': createdAt.toIso8601String(),
+      // ✅ Serialize new fields
+      'phone': phone,
+      'socials': socials,
     };
   }
 
@@ -40,6 +49,12 @@ class UserModel {
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
           : DateTime.now(),
+      // ✅ Deserialize new fields
+      phone: map['phone'],
+      // Safely convert Map<dynamic, dynamic> to Map<String, dynamic>
+      socials: map['socials'] != null
+          ? Map<String, dynamic>.from(map['socials'])
+          : null,
     );
   }
 

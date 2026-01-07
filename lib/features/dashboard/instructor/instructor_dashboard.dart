@@ -96,7 +96,7 @@ class _InstructorDashboardState extends State<InstructorDashboard>
           color: theme.colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -139,7 +139,7 @@ class _InstructorDashboardState extends State<InstructorDashboard>
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF7C3AED).withOpacity(0.4),
+            color: const Color(0xFF7C3AED).withValues(alpha: 0.4),
             blurRadius: 16,
             offset: const Offset(0, 8),
             spreadRadius: -2,
@@ -151,7 +151,7 @@ class _InstructorDashboardState extends State<InstructorDashboard>
         child: InkWell(
           onTap: _openCreateCourse,
           borderRadius: BorderRadius.circular(16),
-          splashColor: Colors.white.withOpacity(0.2),
+          splashColor: Colors.white.withValues(alpha: 0.2),
           child: const Padding(
             padding: EdgeInsets.all(16),
             child: Icon(Icons.add_rounded, color: Colors.white, size: 28),

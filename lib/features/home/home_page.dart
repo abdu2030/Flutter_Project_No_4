@@ -1,7 +1,7 @@
 // lib/features/home/home_page.dart
 
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // role check
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +10,7 @@ import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/features/auth/register_page.dart';
 import 'package:eduvox/features/settings/settings_page.dart';
-import 'package:eduvox/features/dashboard/student/pages/student_course_details_page.dart'; 
+import 'package:eduvox/features/dashboard/student/pages/student_course_details_page.dart';
 import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
 import 'package:eduvox/features/dashboard/instructor/instructor_dashboard.dart';
 
@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ APP BAR (Updated Logic)
+  // ✅ APP BAR
   AppBar _buildAppBar(
     BuildContext context,
     User? user,
@@ -146,12 +146,10 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ),
-            // ✅ UPDATED ON_SELECTED LOGIC
             onSelected: (value) async {
               if (value == 'logout') {
                 await FirebaseAuth.instance.signOut();
               } else if (value == 'profile') {
-                // 1. Show Loading
                 showDialog(
                   context: context,
                   barrierDismissible: false,
@@ -160,20 +158,15 @@ class _HomePageState extends State<HomePage> {
                 );
 
                 try {
-                  // 2. Fetch User Role
                   final doc = await FirebaseFirestore.instance
                       .collection('users')
                       .doc(user.uid)
                       .get();
 
-                  if (context.mounted) Navigator.pop(context); // Close loading
+                  if (context.mounted) Navigator.pop(context);
 
                   if (doc.exists && context.mounted) {
                     final role = doc.data()?['role'] ?? 'student';
-
-                    // 3. Navigate based on Role
-                    // NOTE: If your dashboards support 'initialIndex', you can pass it here
-                    // e.g. StudentDashboard(initialIndex: 3) if profile is tab 3.
                     if (role == 'instructor') {
                       Navigator.push(
                         context,
@@ -191,7 +184,7 @@ class _HomePageState extends State<HomePage> {
                     }
                   }
                 } catch (e) {
-                  if (context.mounted) Navigator.pop(context); // Close loading
+                  if (context.mounted) Navigator.pop(context);
                   ScaffoldMessenger.of(
                     context,
                   ).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -287,10 +280,14 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ GRID
+  // ✅ GRID - STRICT FILTERING
   Widget _buildCourseGrid(ThemeData theme, bool isDark) {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('courses').snapshots(),
+      // 1. Query Firestore for published courses
+      stream: FirebaseFirestore.instance
+          .collection('courses')
+          .where('isPublished', isEqualTo: true)
+          .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -300,10 +297,18 @@ class _HomePageState extends State<HomePage> {
         }
 
         final docs = snapshot.data?.docs ?? [];
+
+        // 2. Client-Side Double Check
         final filteredDocs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
+
+          // ✅ STRICT CHECK: Ensure isPublished is strictly true
+          final bool isPublished = data['isPublished'] == true;
+
           final title = (data['title'] ?? '').toString().toLowerCase();
-          return title.contains(_searchQuery);
+          final matchesSearch = title.contains(_searchQuery);
+
+          return isPublished && matchesSearch;
         }).toList();
 
         if (filteredDocs.isEmpty) {

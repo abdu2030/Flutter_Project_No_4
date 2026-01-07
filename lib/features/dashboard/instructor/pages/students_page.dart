@@ -17,8 +17,8 @@ class StudentsPage extends StatefulWidget {
 class _StudentsPageState extends State<StudentsPage> {
   final CourseService _courseService = CourseService();
   final AuthService _authService = AuthService();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  // Selected Filter
   String? _selectedCourseId;
 
   @override
@@ -30,23 +30,49 @@ class _StudentsPageState extends State<StudentsPage> {
         title: const Text('My Students'),
         automaticallyImplyLeading: false,
       ),
-      body: Column(
-        children: [
-          // Course Filter Dropdown
-          StreamBuilder<List<CourseModel>>(
-            stream: _courseService.getInstructorCourses(userId),
-            builder: (context, snapshot) {
-              final courses = snapshot.data ?? [];
+      body: StreamBuilder<List<CourseModel>>(
+        stream: _courseService.getInstructorCourses(userId),
+        builder: (context, snapshot) {
+          // 1. Loading
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-              return Container(
+          // 2. No Data
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return _buildEmptyState();
+          }
+
+          final allCourses = snapshot.data!;
+
+          // 3. Filter Logic
+          // If a course is selected in dropdown, use only that. Otherwise use all.
+          final filteredCourses = _selectedCourseId != null
+              ? allCourses.where((c) => c.id == _selectedCourseId).toList()
+              : allCourses;
+
+          // 4. Extract Unique Student IDs
+          final Set<String> studentIds = {};
+          for (var course in filteredCourses) {
+            studentIds.addAll(course.enrolledStudents);
+          }
+
+          return Column(
+            children: [
+              // --- FILTER DROPDOWN ---
+              Container(
                 padding: const EdgeInsets.all(16),
                 child: DropdownButtonFormField<String?>(
-                  initialValue: _selectedCourseId,
+                  value: _selectedCourseId,
                   decoration: InputDecoration(
                     labelText: 'Filter by Course',
                     prefixIcon: const Icon(Icons.filter_list),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
                     ),
                   ),
                   items: [
@@ -54,10 +80,14 @@ class _StudentsPageState extends State<StudentsPage> {
                       value: null,
                       child: Text('All Courses'),
                     ),
-                    ...courses.map((course) {
+                    ...allCourses.map((course) {
                       return DropdownMenuItem(
                         value: course.id,
-                        child: Text(course.title),
+                        child: Text(
+                          course.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       );
                     }),
                   ],
@@ -65,44 +95,20 @@ class _StudentsPageState extends State<StudentsPage> {
                     setState(() => _selectedCourseId = value);
                   },
                 ),
-              );
-            },
-          ),
+              ),
 
-          // Students List
-          Expanded(
-            child: StreamBuilder<List<CourseModel>>(
-              stream: _courseService.getInstructorCourses(userId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _buildEmptyState();
-                }
-
-                // Get all unique student IDs
-                final courses = _selectedCourseId != null
-                    ? snapshot.data!
-                          .where((c) => c.id == _selectedCourseId)
-                          .toList()
-                    : snapshot.data!;
-
-                final studentIds = <String>{};
-                for (var course in courses) {
-                  studentIds.addAll(course.enrolledStudents);
-                }
-
-                if (studentIds.isEmpty) {
-                  return _buildNoStudentsState();
-                }
-
-                return _buildStudentsList(studentIds.toList(), courses);
-              },
-            ),
-          ),
-        ],
+              // --- STUDENT LIST ---
+              Expanded(
+                child: studentIds.isEmpty
+                    ? _buildNoStudentsState()
+                    : _StudentListBuilder(
+                        studentIds: studentIds.toList(),
+                        allInstructorCourses: allCourses,
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -136,123 +142,203 @@ class _StudentsPageState extends State<StudentsPage> {
           Icon(Icons.people_outline, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
           Text(
-            'No students yet',
+            'No students found',
             style: TextStyle(fontSize: 18, color: Colors.grey[600]),
           ),
           const SizedBox(height: 8),
           Text(
-            'Publish your courses to attract students',
+            'Try changing the filter or waiting for enrollments',
+            textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey[400]),
           ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildStudentsList(
-    List<String> studentIds,
-    List<CourseModel> courses,
-  ) {
+// ---------------------------------------------------------------------------
+// ✅ SEPARATE WIDGET FOR FETCHING USER DETAILS
+// This separates the UI logic from the data fetching logic to prevent refresh loops
+// ---------------------------------------------------------------------------
+class _StudentListBuilder extends StatelessWidget {
+  final List<String> studentIds;
+  final List<CourseModel> allInstructorCourses;
+
+  const _StudentListBuilder({
+    required this.studentIds,
+    required this.allInstructorCourses,
+  });
+
+  // Optimized Fetching: Uses 'whereIn' to fetch 10 students at a time
+  Future<List<UserModel>> _fetchStudentsEfficiently() async {
+    if (studentIds.isEmpty) return [];
+
+    final List<UserModel> fetchedStudents = [];
+    final FirebaseFirestore firestore = FirebaseFirestore.instance;
+
+    // Firestore 'whereIn' is limited to 10 items. We must chunk the list.
+    for (var i = 0; i < studentIds.length; i += 10) {
+      final end = (i + 10 < studentIds.length) ? i + 10 : studentIds.length;
+      final chunk = studentIds.sublist(i, end);
+
+      try {
+        final querySnapshot = await firestore
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+
+        for (var doc in querySnapshot.docs) {
+          fetchedStudents.add(UserModel.fromMap(doc.data()));
+        }
+      } catch (e) {
+        debugPrint("Error fetching student chunk: $e");
+      }
+    }
+
+    return fetchedStudents;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return FutureBuilder<List<UserModel>>(
-      future: _fetchStudents(studentIds),
+      future: _fetchStudentsEfficiently(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading students: ${snapshot.error}'),
+          );
+        }
+
         final students = snapshot.data ?? [];
+
+        if (students.isEmpty) {
+          return const Center(child: Text("Could not load student details"));
+        }
 
         return ListView.builder(
           padding: const EdgeInsets.all(16),
           itemCount: students.length,
           itemBuilder: (context, index) {
             final student = students[index];
-            final enrolledIn = courses
+
+            // Calculate which courses THIS specific student is enrolled in
+            // (Only checking courses that belong to this instructor)
+            final enrolledIn = allInstructorCourses
                 .where((c) => c.enrolledStudents.contains(student.uid))
                 .toList();
 
-            return _buildStudentCard(student, enrolledIn);
+            return _StudentCard(student: student, enrolledCourses: enrolledIn);
           },
         );
       },
     );
   }
+}
 
-  Future<List<UserModel>> _fetchStudents(List<String> studentIds) async {
-    final students = <UserModel>[];
+// ---------------------------------------------------------------------------
+// ✅ STUDENT CARD WIDGET
+// ---------------------------------------------------------------------------
+class _StudentCard extends StatelessWidget {
+  final UserModel student;
+  final List<CourseModel> enrolledCourses;
 
-    for (var id in studentIds) {
-      try {
-        final doc = await _firestore.collection('users').doc(id).get();
-        if (doc.exists && doc.data() != null) {
-          students.add(UserModel.fromMap(doc.data()!));
-        }
-      } catch (e) {
-        print('Error fetching student $id: $e');
-      }
-    }
+  const _StudentCard({required this.student, required this.enrolledCourses});
 
-    return students;
-  }
+  @override
+  Widget build(BuildContext context) {
+    // Handle case where name might be null
+    final displayName = student.name != null && student.name!.isNotEmpty
+        ? student.name!
+        : 'Student';
 
-  Widget _buildStudentCard(
-    UserModel student,
-    List<CourseModel> enrolledCourses,
-  ) {
+    final initial = displayName.isNotEmpty ? displayName[0].toUpperCase() : '?';
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ExpansionTile(
         leading: CircleAvatar(
           backgroundColor: Colors.blue.shade100,
-          backgroundImage: student.profileImage != null
+          backgroundImage:
+              student.profileImage != null && student.profileImage!.isNotEmpty
               ? NetworkImage(student.profileImage!)
               : null,
-          child: student.profileImage == null
+          child: student.profileImage == null || student.profileImage!.isEmpty
               ? Text(
-                  (student.name ?? student.email)[0].toUpperCase(),
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  initial,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue.shade800,
+                  ),
                 )
               : null,
         ),
         title: Text(
-          student.name ?? 'Student',
+          displayName,
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
-        subtitle: Text(student.email),
+        subtitle: Text(
+          student.email,
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.1),
+            color: Colors.blue.withOpacity(0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             '${enrolledCourses.length} courses',
-            style: const TextStyle(fontSize: 12, color: Colors.blue),
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.blue,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Enrolled Courses:',
-                  style: TextStyle(fontWeight: FontWeight.w500),
+                const Divider(),
+                const SizedBox(height: 8),
+                Text(
+                  'Enrolled In:',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[700],
+                    fontSize: 13,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 ...enrolledCourses.map((course) {
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.only(bottom: 6),
                     child: Row(
                       children: [
                         const Icon(
-                          Icons.check_circle,
+                          Icons.check_circle_outline,
                           size: 16,
                           color: Colors.green,
                         ),
                         const SizedBox(width: 8),
-                        Expanded(child: Text(course.title)),
+                        Expanded(
+                          child: Text(
+                            course.title,
+                            style: const TextStyle(fontSize: 14),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   );

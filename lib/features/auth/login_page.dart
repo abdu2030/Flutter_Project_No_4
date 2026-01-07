@@ -44,17 +44,21 @@ class _LoginPageState extends State<LoginPage> {
         if (mounted) {
           // 3. Navigate based on role
           if (role == 'instructor') {
-            Navigator.pushReplacement(
+            // ✅ FIX: Use pushAndRemoveUntil to wipe navigation history
+            Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(
                 builder: (context) => const InstructorDashboard(),
               ),
+              (route) =>
+                  false, // This removes all previous routes (Back button exits app)
             );
           } else {
-            // Default to student
-            Navigator.pushReplacement(
+            // ✅ FIX: Use pushAndRemoveUntil for students too
+            Navigator.pushAndRemoveUntil(
               context,
               MaterialPageRoute(builder: (context) => const StudentDashboard()),
+              (route) => false, // This removes all previous routes
             );
           }
         }
