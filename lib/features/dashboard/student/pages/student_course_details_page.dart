@@ -1,20 +1,26 @@
 // lib/features/dashboard/student/pages/course_detail_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:uuid/uuid.dart';
+
+// Core & Shared
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/core/models/course_model.dart';
 import 'package:eduvox/core/models/lesson_model.dart';
+import 'package:eduvox/core/models/user_model.dart'; // ✅ Needed for profile
 import 'package:eduvox/core/services/course_service.dart';
+import 'package:eduvox/core/services/auth_service.dart'; // ✅ Needed for profile fetch
+import 'package:eduvox/core/services/chapa_service.dart';
+
+// Widgets & Screens
 import 'package:eduvox/shared/widgets/course_detail_widgets.dart';
 import 'package:eduvox/shared/screens/video_player_screen.dart';
 import 'package:eduvox/shared/screens/document_viewer_screen.dart';
+import 'package:eduvox/shared/screens/chapa_payment_screen.dart';
 import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
 import 'package:eduvox/shared/dialogs/rating_dialog.dart';
-import 'package:uuid/uuid.dart';
-import 'package:eduvox/core/services/chapa_service.dart';
-import 'package:eduvox/shared/screens/chapa_payment_screen.dart';
-
 
 class StudentCourseDetailPage extends StatefulWidget {
   final String courseId;
@@ -27,17 +33,22 @@ class StudentCourseDetailPage extends StatefulWidget {
 }
 
 class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
+  // Services
   final CourseService _courseService = CourseService();
   final String _currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
+  // State Variables
   String? _currentUserEmail;
   String? _currentUserFirstName;
   String? _currentUserLastName;
+
   bool _isEnrolled = false;
   bool _isLoading = true;
-  bool _isEnrolling = false; // Used for button loading state
+  bool _isEnrolling = false;
+
   CourseModel? _course;
   Set<String> _completedLessons = {};
+  double? _userRating;
 
   @override
   void initState() {
@@ -45,6 +56,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     _initData();
     _loadUserData();
   }
+
+  // --- DATA LOADING ---
 
   Future<void> _loadUserData() async {
     try {
@@ -74,13 +87,10 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
       final isEnrolled =
           course?.enrolledStudents.contains(_currentUserId) ?? false;
 
-      // Auto-repair missing user course data if they are in the list
       if (isEnrolled && course != null) {
         await _ensureUserHasCourseData(course);
-      }
 
-      // Fetch progress if enrolled
-      if (isEnrolled) {
+        // Fetch progress
         final completedSnapshot = await FirebaseFirestore.instance
             .collection('users')
             .doc(_currentUserId)
@@ -97,6 +107,20 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
               );
             });
           }
+        }
+
+        // Fetch user rating
+        final reviewDoc = await FirebaseFirestore.instance
+            .collection('courses')
+            .doc(widget.courseId)
+            .collection('reviews')
+            .doc(_currentUserId)
+            .get();
+
+        if (reviewDoc.exists && mounted) {
+          setState(() {
+            _userRating = (reviewDoc.data()?['rating'] ?? 0).toDouble();
+          });
         }
       }
 
@@ -134,406 +158,231 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     }
   }
 
-  // ✅ ENROLLMENT LOGIC
-  // ✅ MAIN ENROLLMENT METHOD
-  Future<void> _enrollInCourse() async {
-    if (_course == null) return;
+  // --- INSTRUCTOR PROFILE MODAL ---
 
-    // Check if course is FREE or PAID
-    if (_course!.price == 0) {
-      // Free course - enroll directly
-      await _completeFreeEnrollment();
-    } else {
-      // Paid course - initiate payment
-      await _initiatePayment();
-    }
-  }
-
-  // ✅ INITIATE CHAPA PAYMENT
-  Future<void> _initiatePayment() async {
-    setState(() => _isEnrolling = true);
-
-    try {
-      // Generate unique transaction reference
-      final txRef =
-          'EDUVOX-${const Uuid().v4().substring(0, 8).toUpperCase()}-${DateTime.now().millisecondsSinceEpoch}';
-
-      // Create pending payment record in Firestore
-      await FirebaseFirestore.instance.collection('payments').doc(txRef).set({
-        'txRef': txRef,
-        'userId': _currentUserId,
-        'courseId': widget.courseId,
-        'courseTitle': _course!.title,
-        'amount': _course!.price,
-        'currency': 'ETB',
-        'status': 'pending',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
-
-      // Initialize Chapa payment
-      final response = await ChapaService.initializePayment(
-        amount: _course!.price.toString(),
-        email: _currentUserEmail ?? 'user@example.com',
-        firstName: _currentUserFirstName ?? 'User',
-        lastName: _currentUserLastName ?? '',
-        txRef: txRef,
-        courseId: widget.courseId,
-        courseTitle: _course!.title,
-      );
-
-      if (!mounted) return;
-
-      if (response.success && response.checkoutUrl != null) {
-        setState(() => _isEnrolling = false);
-
-        // Navigate to payment WebView
-        final result = await Navigator.push<ChapaPaymentResult>(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChapaPaymentScreen(
-              checkoutUrl: response.checkoutUrl!,
-              txRef: txRef,
-              courseTitle: _course!.title,
-            ),
-          ),
-        );
-
-        // Handle payment result
-        await _handlePaymentResult(result, txRef);
-      } else {
-        setState(() => _isEnrolling = false);
-        _showErrorSnackBar(response.message);
-      }
-    } catch (e) {
-      setState(() => _isEnrolling = false);
-      _showErrorSnackBar('Payment error: $e');
-    }
-  }
-
-  // ✅ HANDLE PAYMENT RESULT
-  Future<void> _handlePaymentResult(
-    ChapaPaymentResult? result,
-    String txRef,
-  ) async {
-    if (result == null) {
-      await _updatePaymentStatus(txRef, 'cancelled');
-      _showErrorSnackBar('Payment was cancelled');
-      return;
-    }
-
-    switch (result.status) {
-      case PaymentStatus.success:
-        setState(() => _isEnrolling = true);
-
-        // Verify payment with Chapa
-        final verification = await ChapaService.verifyPayment(txRef);
-
-        if (verification.isSuccessful) {
-          // Update payment record
-          await _updatePaymentStatus(txRef, 'success');
-          // Complete enrollment
-          await _completePaidEnrollment(txRef);
-        } else {
-          setState(() => _isEnrolling = false);
-          await _updatePaymentStatus(txRef, 'failed');
-          _showErrorSnackBar(
-            'Payment verification failed. Please contact support.',
-          );
-        }
-        break;
-
-      case PaymentStatus.failed:
-        await _updatePaymentStatus(txRef, 'failed');
-        _showErrorSnackBar(result.message ?? 'Payment failed');
-        break;
-
-      case PaymentStatus.cancelled:
-        await _updatePaymentStatus(txRef, 'cancelled');
-        _showErrorSnackBar('Payment was cancelled');
-        break;
-
-      case PaymentStatus.pending:
-        _showWarningSnackBar('Payment is pending. Please try again.');
-        break;
-    }
-  }
-
-  // ✅ UPDATE PAYMENT STATUS
-  Future<void> _updatePaymentStatus(String txRef, String status) async {
-    try {
-      await FirebaseFirestore.instance.collection('payments').doc(txRef).update(
-        {'status': status, 'updatedAt': FieldValue.serverTimestamp()},
-      );
-    } catch (e) {
-      debugPrint('Error updating payment status: $e');
-    }
-  }
-
-  // ✅ COMPLETE FREE ENROLLMENT
-  Future<void> _completeFreeEnrollment() async {
-    setState(() => _isEnrolling = true);
-
-    try {
-      // 1. Add user to Course's student list
-      await FirebaseFirestore.instance
-          .collection('courses')
-          .doc(widget.courseId)
-          .update({
-            'enrolledStudents': FieldValue.arrayUnion([_currentUserId]),
-          });
-
-      // 2. Add Course to User's enrolled list
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUserId)
-          .collection('enrolledCourses')
-          .doc(widget.courseId)
-          .set({
-            'courseId': widget.courseId,
-            'title': _course!.title,
-            'instructorName': _course!.instructorName,
-            'thumbnailUrl': _course!.thumbnailUrl,
-            'enrolledAt': FieldValue.serverTimestamp(),
-            'progress': 0.0,
-            'isCompleted': false,
-            'paidAmount': 0,
-          });
-
-      if (mounted) {
-        await _showEnrollmentSuccessDialog();
-
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const StudentDashboard()),
-            (route) => false,
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorSnackBar('Enrollment failed: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isEnrolling = false);
-      }
-    }
-  }
-
-  // ✅ COMPLETE PAID ENROLLMENT
-  Future<void> _completePaidEnrollment(String txRef) async {
-    try {
-      // 1. Add user to Course's student list
-      await FirebaseFirestore.instance
-          .collection('courses')
-          .doc(widget.courseId)
-          .update({
-            'enrolledStudents': FieldValue.arrayUnion([_currentUserId]),
-          });
-
-      // 2. Add Course to User's enrolled list
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUserId)
-          .collection('enrolledCourses')
-          .doc(widget.courseId)
-          .set({
-            'courseId': widget.courseId,
-            'title': _course!.title,
-            'instructorName': _course!.instructorName,
-            'thumbnailUrl': _course!.thumbnailUrl,
-            'enrolledAt': FieldValue.serverTimestamp(),
-            'progress': 0.0,
-            'isCompleted': false,
-            'paymentTxRef': txRef,
-            'paidAmount': _course!.price,
-          });
-
-      if (mounted) {
-        await _showEnrollmentSuccessDialog();
-
-        if (mounted) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const StudentDashboard()),
-            (route) => false,
-          );
-        }
-      }
-    } catch (e) {
-      _showErrorSnackBar('Enrollment failed: $e');
-    } finally {
-      if (mounted) {
-        setState(() => _isEnrolling = false);
-      }
-    }
-  }
-
-  // ✅ HELPER SNACKBAR METHODS
-  void _showErrorSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppTheme.errorColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  void _showWarningSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.warning_amber_rounded, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(child: Text(message)),
-          ],
-        ),
-        backgroundColor: AppTheme.warningColor,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
-  // ✅ RATING LOGIC
-  Future<void> _showRatingDialog() async {
-    // 1. ✅ CAPTURE THE MESSENGER HERE (Before async gap)
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    showDialog(
+  void _showInstructorProfile() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => RatingDialog(
-        onSubmitted: (rating) async {
-          // We can set loading, but be careful with async gaps
-          setState(() => _isLoading = true);
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        minChildSize: 0.4,
+        maxChildSize: 0.7,
+        builder: (_, controller) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
 
-          try {
-            await _courseService.rateCourse(
-              widget.courseId,
-              _currentUserId,
-              rating,
-            );
+          return Container(
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : Colors.white,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
+            ),
+            child: FutureBuilder<UserModel?>(
+              future: AuthService().getUserData(_course!.instructorId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-            // Refresh data
-            final updatedCourse = await _courseService.getCourse(
-              widget.courseId,
-            );
+                if (!snapshot.hasData || snapshot.data == null) {
+                  return const Center(
+                    child: Text("Instructor info unavailable"),
+                  );
+                }
 
-            if (mounted) {
-              setState(() {
-                _course = updatedCourse;
-                _isLoading = false;
-              });
+                final instructor = snapshot.data!;
+                final socials = instructor.socials ?? {};
 
-              // 2. ✅ USE THE CAPTURED VARIABLE (Not .of(context))
-              scaffoldMessenger.showSnackBar(
-                const SnackBar(
-                  content: Text('Thanks for your rating!'),
-                  backgroundColor: AppTheme.successColor,
-                ),
-              );
-            }
-          } catch (e) {
-            if (mounted) {
-              setState(() => _isLoading = false);
+                return ListView(
+                  controller: controller,
+                  padding: const EdgeInsets.all(24),
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
 
-              // 3. ✅ USE THE CAPTURED VARIABLE HERE TOO
-              scaffoldMessenger.showSnackBar(
-                SnackBar(
-                  content: Text(e.toString().replaceAll("Exception: ", "")),
-                  backgroundColor: AppTheme.errorColor,
-                ),
-              );
-            }
-          }
+                    // Avatar & Name
+                    Center(
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 40,
+                            backgroundColor: AppTheme.primaryColor.withValues(
+                              alpha: 0.1,
+                            ),
+                            backgroundImage: instructor.profileImage != null
+                                ? NetworkImage(instructor.profileImage!)
+                                : null,
+                            child: instructor.profileImage == null
+                                ? Text(
+                                    (instructor.name ?? 'I')[0].toUpperCase(),
+                                    style: const TextStyle(
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            instructor.name ?? 'Instructor',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            instructor.email,
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: isDark ? Colors.white60 : Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    const Text(
+                      "Connect",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    _buildContactTile(
+                      icon: Icons.email_outlined,
+                      title: "Email",
+                      subtitle: instructor.email,
+                      onTap: () {},
+                      isDark: isDark,
+                    ),
+
+                    if (instructor.phone != null &&
+                        instructor.phone!.isNotEmpty)
+                      _buildContactTile(
+                        icon: Icons.phone_outlined,
+                        title: "Phone",
+                        subtitle: instructor.phone!,
+                        onTap: () {},
+                        isDark: isDark,
+                      ),
+
+                    const SizedBox(height: 16),
+
+                    if (socials.isNotEmpty) ...[
+                      const Divider(),
+                      const SizedBox(height: 16),
+                      const Text(
+                        "Social Media",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          if (socials['website']?.isNotEmpty ?? false)
+                            _buildSocialChip(
+                              Icons.language,
+                              "Website",
+                              socials['website'],
+                              isDark,
+                            ),
+                          if (socials['linkedin']?.isNotEmpty ?? false)
+                            _buildSocialChip(
+                              Icons.business,
+                              "LinkedIn",
+                              socials['linkedin'],
+                              isDark,
+                            ),
+                          if (socials['twitter']?.isNotEmpty ?? false)
+                            _buildSocialChip(
+                              Icons.alternate_email,
+                              "Twitter/X",
+                              socials['twitter'],
+                              isDark,
+                            ),
+                        ],
+                      ),
+                    ],
+                  ],
+                );
+              },
+            ),
+          );
         },
       ),
     );
   }
 
-  // ✅ UNENROLL LOGIC
-  Future<void> _unenrollCourse() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Unenroll?'),
-        content: const Text('You will be removed from this course.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+  // --- UI HELPERS FOR MODAL ---
+
+  Widget _buildContactTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey[800] : Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: ListTile(
+        leading: Icon(icon, color: AppTheme.primaryColor),
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : Colors.black87,
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Unenroll'),
-          ),
-        ],
+        ),
+        onTap: onTap,
       ),
     );
-
-    if (confirm != true) return;
-
-    setState(() => _isEnrolling = true);
-
-    try {
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUserId)
-          .collection('enrolledCourses')
-          .doc(widget.courseId)
-          .delete();
-
-      await FirebaseFirestore.instance
-          .collection('courses')
-          .doc(widget.courseId)
-          .update({
-            'enrolledStudents': FieldValue.arrayRemove([_currentUserId]),
-          });
-
-      await FirebaseFirestore.instance
-          .collection('users')
-          .doc(_currentUserId)
-          .collection('progress')
-          .doc(widget.courseId)
-          .delete();
-
-      setState(() {
-        _isEnrolled = false;
-        _completedLessons.clear();
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Unenrolled successfully'),
-            backgroundColor: AppTheme.warningColor,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed: $e'),
-            backgroundColor: AppTheme.errorColor,
-          ),
-        );
-      }
-    } finally {
-      setState(() => _isEnrolling = false);
-    }
   }
+
+  Widget _buildSocialChip(
+    IconData icon,
+    String label,
+    String? url,
+    bool isDark,
+  ) {
+    return ActionChip(
+      avatar: Icon(icon, size: 16, color: Colors.white),
+      label: Text(label, style: const TextStyle(color: Colors.white)),
+      backgroundColor: AppTheme.primaryColor,
+      side: BorderSide.none,
+      onPressed: () {
+        debugPrint("Opening $url");
+      },
+    );
+  }
+
+  // --- MAIN BUILD METHOD ---
 
   @override
   Widget build(BuildContext context) {
@@ -571,7 +420,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
           return CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              // --- APP BAR ---
+              // 1. App Bar
               CourseDetailAppBar(
                 title: _course!.title,
                 imageUrl: _course!.thumbnailUrl,
@@ -614,63 +463,68 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                 ],
               ),
 
-              // --- CONTENT LIST ---
+              // 2. Content List
               SliverPadding(
                 padding: const EdgeInsets.all(20),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
                     if (_isEnrolled) _buildProgressCard(isDark, lessons),
                     if (_isEnrolled) const SizedBox(height: 20),
-
                     _buildCategoryPriceRow(isDark),
                     const SizedBox(height: 20),
-
-                    // ✅ STATS ROW (Rating, Students, Lessons)
                     CourseStatsRow(
                       rating: _course!.rating,
                       studentCount: _course!.enrolledStudents.length,
                       lessonCount: lessons.length,
                       duration:
-                          '${(lessons.fold<int>(0, (sum, l) => sum + l.duration) / 60).toStringAsFixed(1)}h',
+                          '${(_course!.totalDuration / 60).toStringAsFixed(1)}h',
                       isDark: isDark,
                     ),
-
-                    // ✅ RATING BUTTON & REVIEWS COUNT
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Text(
-                                '(${_course!.reviewCount} reviews)',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.grey.shade600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
+                          Text(
+                            '(${_course!.reviewCount} reviews)',
+                            style: TextStyle(
+                              color: isDark
+                                  ? Colors.white54
+                                  : Colors.grey.shade600,
+                              fontSize: 13,
+                            ),
                           ),
-                          // Only show "Rate" button if enrolled
                           if (_isEnrolled)
                             TextButton.icon(
                               onPressed: _showRatingDialog,
-                              icon: const Icon(
-                                Icons.star_rate_rounded,
+                              icon: Icon(
+                                _userRating != null
+                                    ? Icons.star
+                                    : Icons.star_border_rounded,
                                 size: 18,
+                                color: _userRating != null
+                                    ? Colors.amber[700]
+                                    : AppTheme.primaryColor,
                               ),
-                              label: const Text('Rate Course'),
+                              label: Text(
+                                _userRating != null
+                                    ? 'You rated: $_userRating'
+                                    : 'Rate Course',
+                                style: TextStyle(
+                                  fontWeight: _userRating != null
+                                      ? FontWeight.bold
+                                      : FontWeight.normal,
+                                ),
+                              ),
                               style: TextButton.styleFrom(
-                                foregroundColor: Colors.amber[700],
+                                foregroundColor: _userRating != null
+                                    ? Colors.amber[700]
+                                    : AppTheme.primaryColor,
                               ),
                             ),
                         ],
                       ),
                     ),
-
                     const SizedBox(height: 12),
                     const SectionHeader(title: 'About This Course'),
                     const SizedBox(height: 8),
@@ -685,12 +539,15 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                     const SizedBox(height: 24),
                     const SectionHeader(title: 'Instructor'),
                     const SizedBox(height: 8),
+
+                    // ✅ Instructor Card with onTap
                     InstructorInfoCard(
                       name: _course!.instructorName,
                       subtitle: 'Tap to view profile',
                       isDark: isDark,
-                      onTap: () {},
+                      onTap: _showInstructorProfile, // Connected!
                     ),
+
                     const SizedBox(height: 24),
                     _buildWhatYouLearnSection(isDark),
                     const SizedBox(height: 24),
@@ -703,9 +560,8 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                 ),
               ),
 
-              // --- LESSONS LIST ---
+              // 3. Lessons List
               _buildLessonsList(isDark, lessons),
-
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           );
@@ -715,7 +571,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     );
   }
 
-  // --- WIDGET BUILDERS ---
+  // --- HELPER WIDGETS ---
 
   Widget _buildProgressCard(bool isDark, List<LessonModel> lessons) {
     int total = lessons.length;
@@ -861,14 +717,6 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
   }
 
   Widget _buildWhatYouLearnSection(bool isDark) {
-    final learningPoints = [
-      'Understand the core concepts of the subject',
-      'Apply knowledge through practical examples',
-      'Develop critical thinking skills',
-      'Enhance problem-solving abilities',
-      'Prepare for advanced topics and applications',
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -887,40 +735,45 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
             ],
           ),
           child: Column(
-            children: learningPoints
-                .map(
-                  (point) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: const BoxDecoration(
-                            color: Color(0x1A4CAF50),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check,
-                            color: AppTheme.successColor,
-                            size: 16,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            point,
-                            style: TextStyle(
-                              color: isDark
-                                  ? Colors.white70
-                                  : AppTheme.textPrimary,
+            children:
+                [
+                      'Understand the core concepts',
+                      'Apply knowledge practically',
+                      'Develop critical thinking',
+                    ]
+                    .map(
+                      (point) => Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: const BoxDecoration(
+                                color: Color(0x1A4CAF50),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: AppTheme.successColor,
+                                size: 16,
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                point,
+                                style: TextStyle(
+                                  color: isDark
+                                      ? Colors.white70
+                                      : AppTheme.textPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                )
-                .toList(),
+                      ),
+                    )
+                    .toList(),
           ),
         ),
       ],
@@ -1003,201 +856,87 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            if (isLocked) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Enroll to access this lesson'),
-                  backgroundColor: AppTheme.warningColor,
-                ),
-              );
-            } else {
-              _openLesson(lesson, allLessons);
-            }
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    gradient: isLocked
-                        ? LinearGradient(
-                            colors: [
-                              Colors.grey.shade400,
-                              Colors.grey.shade500,
-                            ],
-                          )
-                        : isCompleted
-                        ? LinearGradient(
-                            colors: [
-                              AppTheme.successColor,
-                              AppTheme.successColor.withValues(alpha: 0.7),
-                            ],
-                          )
-                        : hasVideo
-                        ? const LinearGradient(
-                            colors: [Color(0xFFE53935), Color(0xFFEF5350)],
-                          )
-                        : const LinearGradient(
-                            colors: [Color(0xFF1E88E5), Color(0xFF42A5F5)],
-                          ),
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: isLocked
-                        ? null
-                        : [
-                            BoxShadow(
-                              color:
-                                  (isCompleted
-                                          ? AppTheme.successColor
-                                          : hasVideo
-                                          ? Colors.red
-                                          : Colors.blue)
-                                      .withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Icon(
-                        isLocked
-                            ? Icons.lock_rounded
-                            : isCompleted
-                            ? Icons.check_rounded
-                            : hasVideo
-                            ? Icons.play_arrow_rounded
-                            : Icons.description_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                      if (hasBoth && !isLocked && !isCompleted)
-                        Positioned(
-                          bottom: 4,
-                          right: 4,
-                          child: Container(
-                            padding: const EdgeInsets.all(3),
-                            decoration: BoxDecoration(
-                              color: hasVideo ? Colors.blue : Colors.red,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white,
-                                width: 1.5,
-                              ),
-                            ),
-                            child: Icon(
-                              hasVideo ? Icons.description : Icons.play_arrow,
-                              color: Colors.white,
-                              size: 8,
-                            ),
-                          ),
-                        ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 10,
+        ),
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            gradient: isLocked
+                ? LinearGradient(
+                    colors: [Colors.grey.shade400, Colors.grey.shade500],
+                  )
+                : isCompleted
+                ? LinearGradient(
+                    colors: [
+                      AppTheme.successColor,
+                      AppTheme.successColor.withValues(alpha: 0.7),
                     ],
+                  )
+                : hasVideo
+                ? const LinearGradient(
+                    colors: [Color(0xFFE53935), Color(0xFFEF5350)],
+                  )
+                : const LinearGradient(
+                    colors: [Color(0xFF1E88E5), Color(0xFF42A5F5)],
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        lesson.title,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: isLocked
-                              ? (isDark ? Colors.white38 : Colors.grey)
-                              : (isDark ? Colors.white : AppTheme.textPrimary),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 4,
-                        children: [
-                          _buildInfoBadge(
-                            Icons.access_time_rounded,
-                            '${lesson.duration} min',
-                            isDark ? Colors.white54 : Colors.grey,
-                          ),
-                          if (hasVideo)
-                            _buildContentBadge(
-                              'Video',
-                              isLocked ? Colors.grey : Colors.red,
-                            ),
-                          if (hasDoc)
-                            _buildContentBadge(
-                              'Doc',
-                              isLocked ? Colors.grey : Colors.blue,
-                            ),
-                          if (lesson.isFree && !_isEnrolled)
-                            _buildContentBadge(
-                              'Free Preview',
-                              AppTheme.successColor,
-                            ),
-                          if (isCompleted)
-                            _buildContentBadge(
-                              'Completed',
-                              AppTheme.successColor,
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(
-                  isLocked
-                      ? Icons.lock_outline_rounded
-                      : Icons.arrow_forward_ios_rounded,
-                  size: 18,
-                  color: isLocked
-                      ? (isDark ? Colors.white24 : Colors.grey.shade300)
-                      : (isDark ? Colors.white38 : Colors.grey),
-                ),
-              ],
-            ),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(
+            isLocked
+                ? Icons.lock_rounded
+                : isCompleted
+                ? Icons.check_rounded
+                : hasVideo
+                ? Icons.play_arrow_rounded
+                : Icons.description_rounded,
+            color: Colors.white,
+            size: 28,
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildInfoBadge(IconData icon, String text, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: color),
-        const SizedBox(width: 4),
-        Text(text, style: TextStyle(fontSize: 11, color: color)),
-      ],
-    );
-  }
-
-  Widget _buildContentBadge(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 10,
-          color: color,
-          fontWeight: FontWeight.w600,
+        title: Text(
+          lesson.title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 15,
+            color: isLocked
+                ? (isDark ? Colors.white38 : Colors.grey)
+                : (isDark ? Colors.white : AppTheme.textPrimary),
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
+        subtitle: Text(
+          '${lesson.duration} min',
+          style: TextStyle(
+            fontSize: 12,
+            color: isDark ? Colors.white54 : AppTheme.textSecondary,
+          ),
+        ),
+        trailing: Icon(
+          isLocked
+              ? Icons.lock_outline_rounded
+              : Icons.arrow_forward_ios_rounded,
+          size: 18,
+          color: isLocked
+              ? (isDark ? Colors.white24 : Colors.grey.shade300)
+              : (isDark ? Colors.white38 : Colors.grey),
+        ),
+        onTap: () {
+          if (isLocked) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Enroll to access this lesson'),
+                backgroundColor: AppTheme.warningColor,
+              ),
+            );
+          } else {
+            _openLesson(lesson, allLessons);
+          }
+        },
       ),
     );
   }
@@ -1305,160 +1044,320 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     );
   }
 
-  // ✅ SUCCESS DIALOG
-  Future<void> _showEnrollmentSuccessDialog() async {
-    return showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+  // --- LOGIC FUNCTIONS ---
 
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Container(
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: isDark ? AppTheme.darkSurface : Colors.white,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: AppTheme.successColor.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: AppTheme.successColor.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.check_circle_rounded,
-                      color: AppTheme.successColor,
-                      size: 64,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Enrollment Successful! 🎉',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'You have been enrolled in',
-                  style: TextStyle(
-                    color: isDark ? Colors.white54 : AppTheme.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _course!.title,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.primaryColor,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.grey.shade50,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      _buildSuccessInfoRow(
-                        Icons.play_lesson_rounded,
-                        'Access all lessons',
-                        Colors.blue,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSuccessInfoRow(
-                        Icons.quiz_rounded,
-                        'Take quizzes & assignments',
-                        Colors.orange,
-                      ),
-                      const SizedBox(height: 12),
-                      _buildSuccessInfoRow(
-                        Icons.card_membership_rounded,
-                        'Earn certificate on completion',
-                        AppTheme.successColor,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.primaryColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.dashboard_rounded, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          'Go to My Courses',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+  Future<void> _enrollInCourse() async {
+    if (_course == null) return;
+    if (_course!.price == 0) {
+      await _completeFreeEnrollment();
+    } else {
+      await _initiatePayment();
+    }
+  }
+
+  Future<void> _initiatePayment() async {
+    setState(() => _isEnrolling = true);
+    try {
+      final txRef =
+          'EDUVOX-${const Uuid().v4().substring(0, 8).toUpperCase()}-${DateTime.now().millisecondsSinceEpoch}';
+      await FirebaseFirestore.instance.collection('payments').doc(txRef).set({
+        'txRef': txRef,
+        'userId': _currentUserId,
+        'courseId': widget.courseId,
+        'courseTitle': _course!.title,
+        'amount': _course!.price,
+        'currency': 'ETB',
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      final response = await ChapaService.initializePayment(
+        amount: _course!.price.toString(),
+        email: _currentUserEmail ?? 'user@example.com',
+        firstName: _currentUserFirstName ?? 'User',
+        lastName: _currentUserLastName ?? '',
+        txRef: txRef,
+        courseId: widget.courseId,
+        courseTitle: _course!.title,
+      );
+
+      if (!mounted) return;
+
+      if (response.success && response.checkoutUrl != null) {
+        setState(() => _isEnrolling = false);
+        final result = await Navigator.push<ChapaPaymentResult>(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChapaPaymentScreen(
+              checkoutUrl: response.checkoutUrl!,
+              txRef: txRef,
+              courseTitle: _course!.title,
             ),
           ),
         );
-      },
+        await _handlePaymentResult(result, txRef);
+      } else {
+        setState(() => _isEnrolling = false);
+        _showErrorSnackBar(response.message);
+      }
+    } catch (e) {
+      setState(() => _isEnrolling = false);
+      _showErrorSnackBar('Payment error: $e');
+    }
+  }
+
+  Future<void> _handlePaymentResult(
+    ChapaPaymentResult? result,
+    String txRef,
+  ) async {
+    if (result == null) {
+      await _updatePaymentStatus(txRef, 'cancelled');
+      _showErrorSnackBar('Payment was cancelled');
+      return;
+    }
+    switch (result.status) {
+      case PaymentStatus.success:
+        setState(() => _isEnrolling = true);
+        final verification = await ChapaService.verifyPayment(txRef);
+        if (verification.isSuccessful) {
+          await _updatePaymentStatus(txRef, 'success');
+          await _completePaidEnrollment(txRef);
+        } else {
+          setState(() => _isEnrolling = false);
+          await _updatePaymentStatus(txRef, 'failed');
+          _showErrorSnackBar('Verification failed.');
+        }
+        break;
+      case PaymentStatus.failed:
+        await _updatePaymentStatus(txRef, 'failed');
+        _showErrorSnackBar(result.message ?? 'Payment failed');
+        break;
+      case PaymentStatus.cancelled:
+        await _updatePaymentStatus(txRef, 'cancelled');
+        _showErrorSnackBar('Payment was cancelled');
+        break;
+      case PaymentStatus.pending:
+        _showWarningSnackBar('Payment is pending.');
+        break;
+    }
+  }
+
+  Future<void> _updatePaymentStatus(String txRef, String status) async {
+    try {
+      await FirebaseFirestore.instance.collection('payments').doc(txRef).update(
+        {'status': status, 'updatedAt': FieldValue.serverTimestamp()},
+      );
+    } catch (e) {
+      debugPrint('Error updating payment status: $e');
+    }
+  }
+
+  Future<void> _completeFreeEnrollment() async {
+    setState(() => _isEnrolling = true);
+    try {
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(widget.courseId)
+          .update({
+            'enrolledStudents': FieldValue.arrayUnion([_currentUserId]),
+          });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .collection('enrolledCourses')
+          .doc(widget.courseId)
+          .set({
+            'courseId': widget.courseId,
+            'title': _course!.title,
+            'instructorName': _course!.instructorName,
+            'thumbnailUrl': _course!.thumbnailUrl,
+            'enrolledAt': FieldValue.serverTimestamp(),
+            'progress': 0.0,
+            'isCompleted': false,
+            'paidAmount': 0,
+          });
+      if (mounted) {
+        await _showEnrollmentSuccessDialog();
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const StudentDashboard()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Enrollment failed: $e');
+    } finally {
+      if (mounted) setState(() => _isEnrolling = false);
+    }
+  }
+
+  Future<void> _completePaidEnrollment(String txRef) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(widget.courseId)
+          .update({
+            'enrolledStudents': FieldValue.arrayUnion([_currentUserId]),
+          });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .collection('enrolledCourses')
+          .doc(widget.courseId)
+          .set({
+            'courseId': widget.courseId,
+            'title': _course!.title,
+            'instructorName': _course!.instructorName,
+            'thumbnailUrl': _course!.thumbnailUrl,
+            'enrolledAt': FieldValue.serverTimestamp(),
+            'progress': 0.0,
+            'isCompleted': false,
+            'paymentTxRef': txRef,
+            'paidAmount': _course!.price,
+          });
+      if (mounted) {
+        await _showEnrollmentSuccessDialog();
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const StudentDashboard()),
+            (route) => false,
+          );
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Enrollment failed: $e');
+    } finally {
+      if (mounted) setState(() => _isEnrolling = false);
+    }
+  }
+
+  Future<void> _showRatingDialog() async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    showDialog(
+      context: context,
+      builder: (context) => RatingDialog(
+        onSubmitted: (rating) async {
+          setState(() => _isLoading = true);
+          try {
+            await _courseService.rateCourse(
+              widget.courseId,
+              _currentUserId,
+              rating,
+            );
+            final updatedCourse = await _courseService.getCourse(
+              widget.courseId,
+            );
+            if (mounted) {
+              setState(() {
+                _course = updatedCourse;
+                _userRating = rating;
+                _isLoading = false;
+              });
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Thanks for your rating!'),
+                  backgroundColor: AppTheme.successColor,
+                ),
+              );
+            }
+          } catch (e) {
+            if (mounted) {
+              setState(() => _isLoading = false);
+              scaffoldMessenger.showSnackBar(
+                SnackBar(
+                  content: Text(e.toString()),
+                  backgroundColor: AppTheme.errorColor,
+                ),
+              );
+            }
+          }
+        },
+      ),
     );
   }
 
-  Widget _buildSuccessInfoRow(IconData icon, String text, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
+  Future<void> _unenrollCourse() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unenroll?'),
+        content: const Text('You will be removed from this course.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
           ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
-        Icon(Icons.check_circle, color: color, size: 18),
-      ],
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Unenroll'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+    setState(() => _isEnrolling = true);
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .collection('enrolledCourses')
+          .doc(widget.courseId)
+          .delete();
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(widget.courseId)
+          .update({
+            'enrolledStudents': FieldValue.arrayRemove([_currentUserId]),
+          });
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(_currentUserId)
+          .collection('progress')
+          .doc(widget.courseId)
+          .delete();
+
+      setState(() {
+        _isEnrolled = false;
+        _completedLessons.clear();
+        _userRating = null;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unenrolled successfully'),
+            backgroundColor: AppTheme.warningColor,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) _showErrorSnackBar('Failed: $e');
+    } finally {
+      setState(() => _isEnrolling = false);
+    }
+  }
+
+  // --- SNACKBARS ---
+  void _showErrorSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.errorColor),
     );
   }
 
-  // --- CONTENT NAVIGATION ---
+  void _showWarningSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppTheme.warningColor),
+    );
+  }
+
+  // --- CONTENT OPENING ---
   void _openLesson(LessonModel lesson, List<LessonModel> allLessons) {
     final hasVideo = lesson.videoUrl != null && lesson.videoUrl!.isNotEmpty;
     final hasDoc = lesson.documentUrl != null && lesson.documentUrl!.isNotEmpty;
@@ -1496,126 +1395,33 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
-                  child: Column(
-                    children: [
-                      Text(
-                        lesson.title,
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : AppTheme.textPrimary,
-                        ),
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Select content to view',
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white54
-                              : AppTheme.textSecondary,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
+                  child: Text(
+                    'Select Content',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                 ),
                 ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE53935), Color(0xFFEF5350)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.play_circle_fill_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
+                  leading: const Icon(
+                    Icons.play_circle_fill,
+                    color: Colors.red,
                   ),
-                  title: const Text(
-                    'Watch Video',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    'Play the video lesson',
-                    style: TextStyle(
-                      color: isDark ? Colors.white54 : AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark ? Colors.white38 : Colors.grey,
-                  ),
+                  title: const Text('Watch Video'),
                   onTap: () {
                     Navigator.pop(context);
                     _navigateToVideo(lesson, allLessons);
                   },
                 ),
-                Divider(
-                  height: 1,
-                  indent: 80,
-                  color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
-                ),
                 ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1E88E5), Color(0xFF42A5F5)],
-                      ),
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.description_rounded,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  title: const Text(
-                    'Read Document',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    'View attached materials',
-                    style: TextStyle(
-                      color: isDark ? Colors.white54 : AppTheme.textSecondary,
-                      fontSize: 12,
-                    ),
-                  ),
-                  trailing: Icon(
-                    Icons.arrow_forward_ios_rounded,
-                    size: 16,
-                    color: isDark ? Colors.white38 : Colors.grey,
-                  ),
+                  leading: const Icon(Icons.description, color: Colors.blue),
+                  title: const Text('Read Document'),
                   onTap: () {
                     Navigator.pop(context);
                     _navigateToDoc(lesson, allLessons);
                   },
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -1650,10 +1456,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     List<LessonModel> allLessons,
   ) async {
     if (!_isEnrolled || _completedLessons.contains(lessonId)) return;
-
-    setState(() {
-      _completedLessons.add(lessonId);
-    });
+    setState(() => _completedLessons.add(lessonId));
 
     await FirebaseFirestore.instance
         .collection('users')
@@ -1679,11 +1482,43 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
 
   void _continueLearning(List<LessonModel> lessons) {
     if (lessons.isEmpty) return;
-
     final nextLesson = lessons.firstWhere(
       (l) => !_completedLessons.contains(l.id),
       orElse: () => lessons.first,
     );
     _openLesson(nextLesson, lessons);
+  }
+
+  Future<void> _showEnrollmentSuccessDialog() async {
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Container(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.green, size: 64),
+                const SizedBox(height: 24),
+                const Text(
+                  'Success!',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Go to My Courses'),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 }

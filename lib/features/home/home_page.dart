@@ -7,8 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:eduvox/shared/theme/app_theme.dart';
-import 'package:eduvox/core/services/auth_service.dart'; // ✅ Added for Logout logic
-import 'package:eduvox/features/auth/auth_gate.dart'; // ✅ Added for Navigation logic
+import 'package:eduvox/core/services/auth_service.dart';
+import 'package:eduvox/features/auth/auth_gate.dart';
 import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/features/auth/register_page.dart';
 import 'package:eduvox/features/settings/settings_page.dart';
@@ -36,7 +36,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 Theme Data
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -96,7 +95,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ APP BAR
+  // ✅ BEAUTIFIED APP BAR
   AppBar _buildAppBar(
     BuildContext context,
     User? user,
@@ -108,9 +107,14 @@ class _HomePageState extends State<HomePage> {
         'EduVox',
         style: TextStyle(fontWeight: FontWeight.bold),
       ),
+      centerTitle: false,
       actions: [
+        // Settings Icon
         IconButton(
-          icon: const Icon(Icons.settings),
+          icon: Icon(
+            Icons.settings_outlined,
+            color: isDark ? Colors.white : AppTheme.textPrimary,
+          ),
           onPressed: () {
             Navigator.push(
               context,
@@ -118,44 +122,84 @@ class _HomePageState extends State<HomePage> {
             );
           },
         ),
+
+        const SizedBox(width: 4),
+
+        // 🛑 AUTH BUTTONS LOGIC
         if (user == null) ...[
+          // 1. Login Button (Clean Text)
           TextButton(
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(builder: (_) => const LoginPage()),
             ),
-            child: const Text('Login'),
-          ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const RegisterPage()),
+            style: TextButton.styleFrom(
+              foregroundColor: isDark ? Colors.white : AppTheme.textPrimary,
+              textStyle: const TextStyle(fontWeight: FontWeight.w600),
             ),
-            child: const Text('Sign Up'),
+            child: const Text('Log In'),
           ),
-          const SizedBox(width: 12),
-        ] else ...[
-          PopupMenuButton<String>(
-            icon: CircleAvatar(
-              radius: 16,
-              backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-              child: Text(
-                user.email != null ? user.email![0].toUpperCase() : 'U',
-                style: const TextStyle(
-                  color: AppTheme.primaryColor,
-                  fontWeight: FontWeight.bold,
+
+          const SizedBox(width: 8),
+
+          // 2. Sign Up Button (Highlighted Pill)
+          SizedBox(
+            height: 36, // Fixed height for alignment
+            child: ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RegisterPage()),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20), // Pill shape
                 ),
+              ),
+              child: const Text(
+                'Sign Up',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16), // Right padding
+        ] else ...[
+          // 🛑 LOGGED IN PROFILE ICON
+          PopupMenuButton<String>(
+            offset: const Offset(0, 50),
+            icon: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: AppTheme.primaryColor.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                backgroundImage: user.photoURL != null
+                    ? NetworkImage(user.photoURL!)
+                    : null,
+                child: user.photoURL == null
+                    ? Text(
+                        user.email != null ? user.email![0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          color: AppTheme.primaryColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    : null,
               ),
             ),
             onSelected: (value) async {
               if (value == 'logout') {
-                // ✅ UPDATED LOGOUT LOGIC
-                // 1. Sign out from Firebase & Google
                 await AuthService().logout();
-
                 if (context.mounted) {
-                  // 2. Navigate to AuthGate (which redirects to Home)
                   Navigator.pushAndRemoveUntil(
                     context,
                     MaterialPageRoute(builder: (context) => const AuthGate()),
@@ -205,22 +249,27 @@ class _HomePageState extends State<HomePage> {
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'profile',
                 child: Row(
                   children: [
-                    Icon(Icons.person, size: 20),
-                    SizedBox(width: 8),
-                    Text('Dashboard'),
+                    Icon(
+                      Icons.dashboard_rounded,
+                      size: 20,
+                      color: Colors.grey[700],
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('My Dashboard'),
                   ],
                 ),
               ),
+              const PopupMenuDivider(),
               const PopupMenuItem<String>(
                 value: 'logout',
                 child: Row(
                   children: [
                     Icon(Icons.logout, color: AppTheme.errorColor, size: 20),
-                    SizedBox(width: 8),
+                    SizedBox(width: 12),
                     Text(
                       'Logout',
                       style: TextStyle(color: AppTheme.errorColor),
@@ -230,7 +279,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
         ],
       ],
     );
@@ -293,7 +342,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ GRID - STRICT FILTERING
+  // ✅ GRID
   Widget _buildCourseGrid(ThemeData theme, bool isDark) {
     return StreamBuilder<QuerySnapshot>(
       // 1. Query Firestore for published courses
@@ -311,7 +360,7 @@ class _HomePageState extends State<HomePage> {
 
         final docs = snapshot.data?.docs ?? [];
 
-        // 2. Client-Side Double Check
+        // 2. Client-Side Double Check & Search Filter
         final filteredDocs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
 

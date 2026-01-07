@@ -13,7 +13,7 @@ class InstructorAnalyticsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final userId = AuthService().currentUser?.uid ?? '';
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    //final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
       // Scaffold background is handled automatically by AppTheme.lightTheme/darkTheme

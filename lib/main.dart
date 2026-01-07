@@ -3,11 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 👈 Import this
 import 'package:eduvox/shared/theme/app_theme.dart';
-
-// ✅ IMPORT AUTH GATE (This handles the redirect logic)
 import 'package:eduvox/features/auth/auth_gate.dart';
-
 import 'firebase_options.dart';
 
 void main() async {
@@ -25,19 +23,50 @@ void main() async {
     }
   }
 
-  runApp(const ProviderScope(child: MyApp()));
+  // 1. Load the saved theme from storage BEFORE the app starts
+  final prefs = await SharedPreferences.getInstance();
+  final String? savedThemeString = prefs.getString('theme_mode');
+
+  // 2. Convert string to ThemeMode
+  ThemeMode initialTheme = ThemeMode.system;
+  if (savedThemeString == 'ThemeMode.dark') initialTheme = ThemeMode.dark;
+  if (savedThemeString == 'ThemeMode.light') initialTheme = ThemeMode.light;
+
+  runApp(ProviderScope(child: MyApp(initialTheme: initialTheme)));
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class MyApp extends StatefulWidget {
+  final ThemeMode initialTheme;
+  const MyApp({super.key, required this.initialTheme});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  late ValueNotifier<ThemeMode> themeNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    // 3. Initialize the notifier with the saved value
+    themeNotifier = ValueNotifier(widget.initialTheme);
+
+    // 4. Listen for changes and save them
+    themeNotifier.addListener(() async {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('theme_mode', themeNotifier.value.toString());
+    });
+  }
+
+  @override
+  void dispose() {
+    themeNotifier.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 🎨 Theme Controller
-    final ValueNotifier<ThemeMode> themeNotifier = ValueNotifier(
-      ThemeMode.system,
-    );
-
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: themeNotifier,
       builder: (context, ThemeMode currentTheme, child) {
@@ -55,8 +84,6 @@ class MyApp extends StatelessWidget {
             return ThemeProvider(themeNotifier: themeNotifier, child: child!);
           },
 
-          // 🛑 CRITICAL FIX: Use AuthGate instead of HomePage
-          // This checks authentication on startup and redirects accordingly.
           home: const AuthGate(),
         );
       },

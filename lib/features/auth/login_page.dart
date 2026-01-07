@@ -123,10 +123,31 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo
-                  Icon(
-                    Icons.school,
-                    size: 80,
-                    color: Theme.of(context).primaryColor,
+                  Container(
+                    height: 100,
+                    width: 100,
+                    decoration: BoxDecoration(
+                      color: Theme.of(
+                        context,
+                      ).cardColor, // Optional: Background for transparency
+                      borderRadius: BorderRadius.circular(
+                        20,
+                      ), // Rounded corners
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/icon/icon.png', // 👈 Your App Icon Path
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
@@ -248,11 +269,15 @@ class _LoginPageState extends State<LoginPage> {
                             width: 24,
                           ),
                           const SizedBox(width: 12),
-                          const Text(
+                          Text(
                             'Sign in with Google',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Colors.white, // Better visibility
+                              color:
+                                  Theme.of(context).brightness ==
+                                      Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
                               fontWeight: FontWeight.w500,
                             ),
                           ),

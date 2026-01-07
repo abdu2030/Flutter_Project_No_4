@@ -13,7 +13,7 @@ class CourseService {
   Stream<List<CourseModel>> getPublishedCourses() {
     return _firestore
         .collection('courses')
-        .where('isPublished', isEqualTo: true) // 👈 THE FIX: Filter drafts
+        .where('isPublished', isEqualTo: true)
         .snapshots()
         .map((snapshot) {
           final courses = snapshot.docs
@@ -23,6 +23,21 @@ class CourseService {
           // Sort by newest first
           courses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
           return courses;
+        });
+  }
+
+  // ==============================================================================
+  // ✅ FOR STUDENTS: Get Enrolled Courses (My Learning)
+  // ==============================================================================
+  Stream<List<Map<String, dynamic>>> getEnrolledCourses(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .collection('enrolledCourses')
+        .orderBy('enrolledAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()).toList();
         });
   }
 
@@ -173,7 +188,9 @@ class CourseService {
     });
   }
 
-  // ✅ Rate Course Feature
+  // --------------------------------------------------------------------------
+  // ✅ RATE OR UPDATE COURSE (Logic Fixed)
+  // --------------------------------------------------------------------------
   Future<void> rateCourse(
     String courseId,
     String userId,
@@ -190,27 +207,52 @@ class CourseService {
         throw Exception("Course does not exist!");
       }
 
-      if (userReviewSnapshot.exists) {
-        throw Exception("You have already rated this course.");
-      }
-
       final data = courseSnapshot.data() as Map<String, dynamic>;
-      double currentRating = (data['rating'] ?? 0.0).toDouble();
-      int currentCount = (data['reviewCount'] ?? 0).toInt();
+      double currentAvgRating = (data['rating'] ?? 0.0).toDouble();
+      int currentReviewCount = (data['reviewCount'] ?? 0).toInt();
 
-      double newAverage =
-          ((currentRating * currentCount) + newRating) / (currentCount + 1);
+      // Calculate total points before this new rating
+      double currentTotalScore = currentAvgRating * currentReviewCount;
 
-      transaction.update(courseRef, {
-        'rating': newAverage,
-        'reviewCount': currentCount + 1,
-      });
+      if (userReviewSnapshot.exists) {
+        // 🔄 CASE 1: UPDATE EXISTING RATING
+        final reviewData = userReviewSnapshot.data() as Map<String, dynamic>;
+        double previousUserRating = (reviewData['rating'] ?? 0.0).toDouble();
 
-      transaction.set(userReviewRef, {
-        'userId': userId,
-        'rating': newRating,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
+        // 1. Remove old rating
+        // 2. Add new rating
+        double newTotalScore =
+            currentTotalScore - previousUserRating + newRating;
+
+        // 3. Recalculate average (Count does not change)
+        double newAvg = newTotalScore / currentReviewCount;
+
+        transaction.update(courseRef, {
+          'rating': newAvg,
+          // reviewCount stays the same
+        });
+
+        transaction.update(userReviewRef, {
+          'rating': newRating,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+      } else {
+        // ➕ CASE 2: NEW RATING
+        double newTotalScore = currentTotalScore + newRating;
+        int newReviewCount = currentReviewCount + 1;
+        double newAvg = newTotalScore / newReviewCount;
+
+        transaction.update(courseRef, {
+          'rating': newAvg,
+          'reviewCount': newReviewCount,
+        });
+
+        transaction.set(userReviewRef, {
+          'userId': userId,
+          'rating': newRating,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
     });
   }
 }
