@@ -7,7 +7,7 @@ import 'package:eduvox/core/services/auth_service.dart';
 import 'package:eduvox/shared/widgets/dashboard_header.dart';
 import 'package:eduvox/shared/widgets/action_button.dart';
 import 'package:eduvox/features/dashboard/instructor/pages/instructor_analytics_page.dart';
-import 'package:eduvox/shared/theme/app_theme.dart'; // Ensure this import exists
+import 'package:eduvox/shared/theme/app_theme.dart';
 import '../dialogs/create_course_dialog.dart';
 import '../screens/course_detail_screen.dart';
 
@@ -20,7 +20,10 @@ class InstructorHomePage extends StatelessWidget {
     final authService = AuthService();
     final userId = authService.currentUser?.uid ?? '';
     final theme = Theme.of(context);
-    //final isDark = theme.brightness == Brightness.dark;
+
+    // We calculate isDark here if we need it for the main build method,
+    // otherwise the sub-widgets calculate it themselves.
+    // final isDark = theme.brightness == Brightness.dark;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -28,6 +31,7 @@ class InstructorHomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ✅ This Header now handles the Profile Click internally
             const DashboardHeader(
               roleText: 'Instructor 🎓',
               icon: Icons.cast_for_education,
@@ -152,7 +156,7 @@ class InstructorHomePage extends StatelessWidget {
     );
   }
 
-  // ✅ Stat Card (Kept your existing high contrast logic)
+  // ✅ Stat Card
   Widget _buildHighContrastStatCard(
     BuildContext context, {
     required String title,
@@ -169,11 +173,11 @@ class InstructorHomePage extends StatelessWidget {
         horizontal: AppTheme.spacingS,
       ),
       decoration: BoxDecoration(
-        color: theme.cardTheme.color, // Uses AppTheme.darkCard / lightCard
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
         // Shadow for light mode
         boxShadow: isDark ? null : AppTheme.shadowSmall,
-        // Border for dark mode to make it pop against the dark background
+        // Border for dark mode
         border: isDark
             ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,
@@ -201,7 +205,7 @@ class InstructorHomePage extends StatelessWidget {
     );
   }
 
-  // ✅ UPDATED: Course Card to Stand Out
+  // ✅ Course Card
   Widget _buildCourseCard(BuildContext context, CourseModel course) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -209,11 +213,11 @@ class InstructorHomePage extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: AppTheme.spacingM),
       decoration: BoxDecoration(
-        color: theme.cardTheme.color, // Uses AppTheme colors
+        color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        // 1. Light Mode: Add Shadow for depth
+        // 1. Light Mode Shadow
         boxShadow: isDark ? null : AppTheme.shadowSmall,
-        // 2. Dark Mode: Add a thin, subtle border to define edges
+        // 2. Dark Mode Border
         border: isDark
             ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,
@@ -239,7 +243,6 @@ class InstructorHomePage extends StatelessWidget {
                   width: 50,
                   height: 50,
                   decoration: BoxDecoration(
-                    // Lighter purple background
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(AppTheme.radiusSmall),
                   ),

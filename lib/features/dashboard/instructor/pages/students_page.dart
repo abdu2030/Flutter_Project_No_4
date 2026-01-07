@@ -63,7 +63,7 @@ class _StudentsPageState extends State<StudentsPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 child: DropdownButtonFormField<String?>(
-                  value: _selectedCourseId,
+                  initialValue: _selectedCourseId,
                   decoration: InputDecoration(
                     labelText: 'Filter by Course',
                     prefixIcon: const Icon(Icons.filter_list),

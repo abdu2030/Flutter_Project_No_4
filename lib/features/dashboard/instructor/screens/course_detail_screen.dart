@@ -1,4 +1,5 @@
 // lib/features/dashboard/instructor/pages/course_detail_screen.dart
+
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,6 +9,8 @@ import 'package:eduvox/core/services/course_service.dart';
 import 'package:eduvox/core/services/storage_service.dart';
 import 'package:eduvox/shared/screens/document_viewer_screen.dart';
 import 'package:eduvox/shared/screens/video_player_screen.dart';
+// ✅ Import Students Page
+import 'package:eduvox/features/dashboard/instructor/pages/students_page.dart';
 import '../dialogs/upload_lesson_dialog.dart';
 import '../dialogs/delete_confirm_dialog.dart';
 import '../dialogs/publish_dialog.dart';
@@ -229,13 +232,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: isDark
           ? AppTheme.darkBackground
           : AppTheme.lightBackground,
-      resizeToAvoidBottomInset: true,
       body: _isLoading
           ? Center(
               child: Column(
@@ -260,28 +261,28 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                   padding: const EdgeInsets.all(20),
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      // Publish Status Card
+                      // Publish Status
                       _buildPublishStatusCard(isDark),
                       const SizedBox(height: 20),
 
-                      // Quick Stats (Earnings)
+                      // Quick Stats (Revenue & Price)
                       _buildQuickStats(isDark),
                       const SizedBox(height: 20),
 
-                      // Course Stats Row
+                      // Course Stats Row (Lessons, Time, Students, Rating)
                       _buildStatsSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Description Section
+                      // Description
                       _buildDescriptionSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Enrolled Students
+                      // Enrolled Students (Clickable)
                       _buildEnrolledStudentsSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Action Buttons
-                      _buildActionButtons(isDark),
+                      // Action Button (Publish/Unpublish only)
+                      _buildPublishActionButton(isDark),
                       const SizedBox(height: 24),
 
                       // Lessons Header
@@ -295,13 +296,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 _buildLessonsList(isDark),
 
                 // Bottom Padding
-                SliverToBoxAdapter(
-                  child: SizedBox(height: 100 + bottomPadding),
-                ),
+                const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
       floatingActionButton: _buildFAB(),
-      bottomSheet: _buildBottomBar(isDark),
+      // ❌ REMOVED BOTTOM BAR
     );
   }
 
@@ -314,7 +313,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       leading: IconButton(
         icon: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: Colors.black26,
             shape: BoxShape.circle,
           ),
@@ -323,11 +322,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         onPressed: () => Navigator.pop(context),
       ),
       actions: [
-        // Edit Button
         IconButton(
           icon: Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.black26,
               shape: BoxShape.circle,
             ),
@@ -340,11 +338,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           onPressed: _editCourse,
           tooltip: 'Edit Course',
         ),
-        // More Options
         PopupMenuButton<String>(
           icon: Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: Colors.black26,
               shape: BoxShape.circle,
             ),
@@ -358,24 +355,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               case 'delete':
                 _deleteCourse();
                 break;
-              case 'share':
-                // TODO: Share course
-                break;
             }
           },
           itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'share',
-              child: Row(
-                children: [
-                  Icon(Icons.share_rounded),
-                  SizedBox(width: 12),
-                  Text('Share'),
-                ],
-              ),
-            ),
-
-            const PopupMenuDivider(),
             PopupMenuItem(
               value: 'delete',
               child: Row(
@@ -404,7 +386,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Thumbnail
             if (_course.thumbnailUrl != null)
               CachedNetworkImage(
                 imageUrl: _course.thumbnailUrl!,
@@ -420,8 +401,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
               )
             else
               _buildThumbnailPlaceholder(),
-
-            // Gradient overlay
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -431,89 +410,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                     Colors.transparent,
                     Colors.black.withValues(alpha: 0.7),
                   ],
-                ),
-              ),
-            ),
-
-            // Status Badge
-            Positioned(
-              top: 90,
-              right: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: _course.isPublished ? AppTheme.success : Colors.orange,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          (_course.isPublished
-                                  ? AppTheme.success
-                                  : Colors.orange)
-                              .withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _course.isPublished
-                          ? Icons.public
-                          : Icons.edit_note_rounded,
-                      size: 16,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      _course.isPublished ? 'Published' : 'Draft',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-            // Price Badge
-            Positioned(
-              top: 90,
-              left: 16,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Text(
-                  _course.price > 0
-                      ? '\$${_course.price.toStringAsFixed(0)}'
-                      : 'FREE',
-                  style: TextStyle(
-                    color: _course.price > 0
-                        ? AppTheme.secondary
-                        : AppTheme.success,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
                 ),
               ),
             ),
@@ -591,12 +487,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _course.isPublished
-                      ? 'Students can discover and enroll in your course'
-                      : 'Your course is not visible to students yet',
+                      ? 'Students can discover and enroll'
+                      : 'Not visible to students',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontSize: 12,
-                    height: 1.4,
                   ),
                 ),
               ],
@@ -615,24 +510,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== QUICK STATS (EARNINGS) ====================
+  // ==================== QUICK STATS (DYNAMIC) ====================
   Widget _buildQuickStats(bool isDark) {
-    final earnings = _course.enrolledStudents.length * _course.price;
+    // ✅ 1. Calculate Real Earnings (Dynamic)
+    final totalEarnings = _course.enrolledStudents.length * _course.price;
 
     return Row(
       children: [
         _buildQuickStatCard(
-          'Total Earnings',
-          '\$${earnings.toStringAsFixed(0)}',
+          'Total Revenue',
+          // Format as currency
+          '\$${totalEarnings.toStringAsFixed(0)}',
           Icons.attach_money_rounded,
           Colors.green,
           isDark,
         ),
         const SizedBox(width: 12),
+        // ✅ 2. Show Price Per Student instead of "This Month" (Since we lack date data)
         _buildQuickStatCard(
-          'This Month',
-          '+\$${(earnings * 0.3).toStringAsFixed(0)}',
-          Icons.trending_up_rounded,
+          'Price / Student',
+          _course.price == 0 ? 'Free' : '\$${_course.price.toStringAsFixed(0)}',
+          Icons.price_change_rounded,
           Colors.blue,
           isDark,
         ),
@@ -700,7 +598,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== STATS SECTION ====================
+  // ==================== STATS SECTION (DYNAMIC) ====================
   Widget _buildStatsSection(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -727,7 +625,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _buildDivider(isDark),
           _buildStatItem(
             Icons.access_time_rounded,
-            '${_course.totalDuration}',
+            '${_course.totalDuration}', // ✅ Dynamic Minutes
             'Minutes',
             Colors.blue,
           ),
@@ -739,7 +637,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             Colors.green,
           ),
           _buildDivider(isDark),
-          _buildStatItem(Icons.star_rounded, '4.8', 'Rating', AppTheme.warning),
+          _buildStatItem(
+            Icons.star_rounded,
+            _course.rating.toStringAsFixed(1), // ✅ Dynamic Rating
+            'Rating',
+            AppTheme.warning,
+          ),
         ],
       ),
     );
@@ -804,7 +707,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Category Badge
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -839,236 +741,136 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== ENROLLED STUDENTS SECTION ====================
+  // ==================== ENROLLED STUDENTS (NAVIGATES TO STUDENTS PAGE) ====================
   Widget _buildEnrolledStudentsSection(bool isDark) {
     final studentCount = _course.enrolledStudents.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Enrolled Students',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (studentCount > 0)
-              TextButton(
-                onPressed: () {
-                  // Navigate to students list
-                },
-                child: const Text('View All'),
+    return GestureDetector(
+      // ✅ NAVIGATE TO STUDENTS PAGE
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentsPage()),
+        );
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Enrolled Students',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-              ),
+              if (studentCount > 0)
+                const Icon(
+                  Icons.arrow_forward_rounded,
+                  size: 20,
+                  color: Colors.grey,
+                ),
             ],
           ),
-          child: studentCount == 0
-              ? Center(
-                  child: Column(
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: studentCount == 0
+                ? Center(
+                    child: Text(
+                      'No students enrolled yet',
+                      style: TextStyle(
+                        color: isDark ? Colors.white54 : AppTheme.textSecondary,
+                      ),
+                    ),
+                  )
+                : Row(
                     children: [
-                      Icon(
-                        Icons.people_outline_rounded,
-                        size: 48,
-                        color: Colors.grey.shade400,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No students enrolled yet',
-                        style: TextStyle(
-                          color: isDark
-                              ? Colors.white54
-                              : AppTheme.textSecondary,
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.secondary.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
                         ),
+                        child: Icon(Icons.people, color: AppTheme.secondary),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Publish your course to start getting students',
-                        style: TextStyle(
-                          color: isDark ? Colors.white38 : Colors.grey,
-                          fontSize: 12,
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$studentCount Students',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              'Tap to view list',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark
+                                    ? Colors.white54
+                                    : AppTheme.textSecondary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
                   ),
-                )
-              : Row(
-                  children: [
-                    // Stacked avatars
-                    SizedBox(
-                      width: 90,
-                      height: 40,
-                      child: Stack(
-                        children: List.generate(
-                          studentCount.clamp(0, 4),
-                          (index) => Positioned(
-                            left: index * 20.0,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isDark
-                                      ? AppTheme.darkSurface
-                                      : Colors.white,
-                                  width: 2,
-                                ),
-                              ),
-                              child: CircleAvatar(
-                                radius: 18,
-                                backgroundColor: [
-                                  Colors.blue,
-                                  Colors.green,
-                                  Colors.orange,
-                                  Colors.purple,
-                                ][index % 4],
-                                child: Text(
-                                  '${index + 1}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    if (studentCount > 4)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.secondary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '+${studentCount - 4}',
-                          style: TextStyle(
-                            color: AppTheme.secondary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$studentCount students enrolled',
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          Text(
-                            'View student progress and analytics',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isDark
-                                  ? Colors.white54
-                                  : AppTheme.textSecondary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 16,
-                      color: isDark ? Colors.white38 : Colors.grey,
-                    ),
-                  ],
-                ),
-        ),
-      ],
+          ),
+        ],
+      ),
     );
   }
 
-  // ==================== ACTION BUTTONS ====================
-  Widget _buildActionButtons(bool isDark) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildActionButton(
-            icon: _course.isPublished ? Icons.public_off : Icons.public,
-            label: _course.isPublished ? 'Unpublish' : 'Publish',
-            color: _course.isPublished ? Colors.orange : AppTheme.success,
-            onTap: _togglePublish,
-            isDark: isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionButton(
-            icon: Icons.visibility_rounded,
-            label: 'Preview',
-            color: Colors.blue,
-            onTap: () {
-              // Preview as student
-            },
-            isDark: isDark,
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _buildActionButton(
-            icon: Icons.analytics_rounded,
-            label: 'Analytics',
-            color: AppTheme.secondary,
-            onTap: () {
-              // View analytics
-            },
-            isDark: isDark,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-    required bool isDark,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w600,
-                fontSize: 12,
-              ),
+  // ==================== PUBLISH ACTION BUTTON (REPLACED THE ROW) ====================
+  Widget _buildPublishActionButton(bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: GestureDetector(
+        onTap: _togglePublish,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: BoxDecoration(
+            color: _course.isPublished
+                ? Colors.orange.withValues(alpha: 0.1)
+                : AppTheme.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: _course.isPublished
+                  ? Colors.orange.withValues(alpha: 0.3)
+                  : AppTheme.success.withValues(alpha: 0.3),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _course.isPublished ? Icons.public_off : Icons.public,
+                color: _course.isPublished ? Colors.orange : AppTheme.success,
+              ),
+              const SizedBox(width: 12),
+              Text(
+                _course.isPublished ? 'Unpublish Course' : 'Publish Course',
+                style: TextStyle(
+                  color: _course.isPublished ? Colors.orange : AppTheme.success,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1095,15 +897,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
             ),
           ],
         ),
-        if (_course.totalLessons > 1)
-          TextButton.icon(
-            onPressed: () {
-              // TODO: Reorder lessons
-            },
-            icon: const Icon(Icons.reorder_rounded, size: 18),
-            label: const Text('Reorder'),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.secondary),
-          ),
       ],
     );
   }
@@ -1392,67 +1185,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
       label: const Text(
         'Add Lesson',
         style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  // ==================== BOTTOM BAR ====================
-  Widget _buildBottomBar(bool isDark) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.darkSurface : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: Row(
-          children: [
-            // Edit Button
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _editCourse,
-                icon: const Icon(Icons.edit_rounded),
-                label: const Text('Edit Details'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppTheme.secondary,
-                  side: BorderSide(color: AppTheme.secondary),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 14),
-            // Publish Button
-            Expanded(
-              child: ElevatedButton.icon(
-                onPressed: _togglePublish,
-                icon: Icon(
-                  _course.isPublished ? Icons.public_off : Icons.public,
-                ),
-                label: Text(_course.isPublished ? 'Unpublish' : 'Publish'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _course.isPublished
-                      ? Colors.orange
-                      : AppTheme.success,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

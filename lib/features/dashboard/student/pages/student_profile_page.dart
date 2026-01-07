@@ -1,15 +1,53 @@
+// lib/features/dashboard/student/pages/student_profile_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:eduvox/core/services/auth_service.dart'; // To handle Google Logout
+import 'package:eduvox/features/auth/auth_gate.dart'; // To redirect to Home Page
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/features/dashboard/student/student_provider.dart';
 import 'package:eduvox/features/settings/settings_page.dart';
-import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/features/dashboard/student/pages/edit_profile_page.dart';
 
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({super.key});
+
+  // ✅ Logout Function
+  Future<void> _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // 1. Use AuthService to sign out (Clears Firebase AND Google)
+      await AuthService().logout();
+
+      if (context.mounted) {
+        // 2. Navigate to AuthGate (Which detects null user and shows HomePage)
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const AuthGate()),
+          (route) => false,
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,27 +57,19 @@ class StudentProfilePage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
-      // 👇 ADDED RefreshIndicator
       body: RefreshIndicator(
         onRefresh: () async {
-          // 1. Force Firebase to fetch latest data from server
           await FirebaseAuth.instance.currentUser?.reload();
-          // 2. Refresh the provider to update UI
           ref.invalidate(currentUserProvider);
         },
         child: SingleChildScrollView(
-          physics:
-              const AlwaysScrollableScrollPhysics(), // Required for RefreshIndicator
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.all(20),
           child: Column(
             children: [
               // 1. Profile Card
               userAsync.when(
-                data: (user) {
-                  // 👇 DEBUG: Check your console to see if URL exists
-                  print("Current Photo URL: ${user?.photoURL}");
-                  return _buildProfileHeader(user, isDark);
-                },
+                data: (user) => _buildProfileHeader(user, isDark),
                 loading: () => const CircularProgressIndicator(),
                 error: (_, __) => const Text('Error loading profile'),
               ),
@@ -82,18 +112,12 @@ class StudentProfilePage extends ConsumerWidget {
                 onTap: () {},
                 isDark: isDark,
               ),
+
+              // ✅ Updated Logout Item
               _buildMenuItem(
                 icon: Icons.logout_rounded,
                 title: 'Logout',
-                onTap: () async {
-                  await FirebaseAuth.instance.signOut();
-                  if (context.mounted) {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(builder: (_) => const LoginPage()),
-                      (route) => false,
-                    );
-                  }
-                },
+                onTap: () => _handleLogout(context), // Call helper function
                 isDark: isDark,
                 isDestructive: true,
               ),
@@ -120,7 +144,6 @@ class StudentProfilePage extends ConsumerWidget {
               child: SizedBox(
                 width: 100,
                 height: 100,
-                // Check if URL is valid
                 child: (user?.photoURL != null && user!.photoURL!.isNotEmpty)
                     ? CachedNetworkImage(
                         imageUrl: user.photoURL!,
@@ -128,7 +151,6 @@ class StudentProfilePage extends ConsumerWidget {
                         placeholder: (context, url) =>
                             const CircularProgressIndicator(),
                         errorWidget: (context, url, error) {
-                          print("❌ Image Load Error: $error"); // Debug print
                           return _buildFallbackAvatar(user);
                         },
                       )

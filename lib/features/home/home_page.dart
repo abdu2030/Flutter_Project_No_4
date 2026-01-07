@@ -7,6 +7,8 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import 'package:eduvox/shared/theme/app_theme.dart';
+import 'package:eduvox/core/services/auth_service.dart'; // ✅ Added for Logout logic
+import 'package:eduvox/features/auth/auth_gate.dart'; // ✅ Added for Navigation logic
 import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/features/auth/register_page.dart';
 import 'package:eduvox/features/settings/settings_page.dart';
@@ -148,7 +150,18 @@ class _HomePageState extends State<HomePage> {
             ),
             onSelected: (value) async {
               if (value == 'logout') {
-                await FirebaseAuth.instance.signOut();
+                // ✅ UPDATED LOGOUT LOGIC
+                // 1. Sign out from Firebase & Google
+                await AuthService().logout();
+
+                if (context.mounted) {
+                  // 2. Navigate to AuthGate (which redirects to Home)
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AuthGate()),
+                    (route) => false,
+                  );
+                }
               } else if (value == 'profile') {
                 showDialog(
                   context: context,
@@ -198,7 +211,7 @@ class _HomePageState extends State<HomePage> {
                   children: [
                     Icon(Icons.person, size: 20),
                     SizedBox(width: 8),
-                    Text('Profile'),
+                    Text('Dashboard'),
                   ],
                 ),
               ),

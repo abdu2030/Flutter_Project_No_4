@@ -60,7 +60,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
                       ),
                       CircleAvatar(
                         radius: 22,
-                        backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                         child: const Icon(
                           Icons.person,
                           color: AppTheme.primaryColor,

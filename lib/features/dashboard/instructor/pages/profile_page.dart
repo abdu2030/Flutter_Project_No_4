@@ -1,15 +1,17 @@
-// lib/features/instructor/pages/profile_page.dart
+// lib/features/dashboard/instructor/pages/profile_page.dart
 
 import 'package:flutter/material.dart';
 import 'package:eduvox/core/models/user_model.dart';
 import 'package:eduvox/core/models/course_model.dart';
 import 'package:eduvox/core/services/auth_service.dart';
 import 'package:eduvox/core/services/course_service.dart';
-import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/features/dashboard/instructor/pages/instructor_analytics_page.dart';
-import 'package:eduvox/features/settings/settings_page.dart'; // ✅ Using existing General Settings
-import 'package:eduvox/features/dashboard/instructor/pages/instructor_edit_profile_page.dart'; // ✅ Import new page
+import 'package:eduvox/features/settings/settings_page.dart';
+import 'package:eduvox/features/dashboard/instructor/pages/instructor_edit_profile_page.dart';
+
+// ✅ IMPORT AUTH GATE
+import 'package:eduvox/features/auth/auth_gate.dart';
 
 class InstructorProfilePage extends StatefulWidget {
   const InstructorProfilePage({super.key});
@@ -48,6 +50,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     }
   }
 
+  // ✅ UPDATED LOGOUT LOGIC
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -69,11 +72,14 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     );
 
     if (confirm == true) {
+      // 1. Sign out from Firebase & Google
       await _authService.logout();
+
       if (mounted) {
+        // 2. Navigate to AuthGate (Redirects to Home Page)
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
+          MaterialPageRoute(builder: (context) => const AuthGate()),
           (route) => false,
         );
       }
@@ -101,7 +107,9 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               // Navigate to Edit Profile and reload data on return
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => InstructorEditProfilePage(user: _user)),
+                MaterialPageRoute(
+                  builder: (_) => InstructorEditProfilePage(user: _user),
+                ),
               );
               if (result == true) _loadUserData();
             },
@@ -134,7 +142,8 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
                         : null,
                     child: _user?.profileImage == null
                         ? Text(
-                            (_user?.name ?? _user?.email ?? 'I')[0].toUpperCase(),
+                            (_user?.name ?? _user?.email ?? 'I')[0]
+                                .toUpperCase(),
                             style: const TextStyle(
                               fontSize: 36,
                               color: AppTheme.primaryColor,
@@ -153,10 +162,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
                   const SizedBox(height: 4),
 
                   // Email
-                  Text(
-                    _user?.email ?? '',
-                    style: theme.textTheme.bodyMedium,
-                  ),
+                  Text(_user?.email ?? '', style: theme.textTheme.bodyMedium),
                   const SizedBox(height: AppTheme.spacingM),
 
                   // Role Badge
@@ -191,10 +197,14 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
                   0,
                   (sum, course) => sum + course.enrolledStudents.length,
                 );
-                final publishedCount = courses.where((c) => c.isPublished).length;
+                final publishedCount = courses
+                    .where((c) => c.isPublished)
+                    .length;
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AppTheme.spacingL),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: AppTheme.spacingL,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -209,11 +219,14 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               },
             ),
 
-            Divider(thickness: 8, color: isDark ? const Color(0xFF121212) : Colors.grey.shade100),
+            Divider(
+              thickness: 8,
+              color: isDark ? const Color(0xFF121212) : Colors.grey.shade100,
+            ),
 
             // --- MENU ITEMS ---
-            
-            // 1. Edit Profile (Explicit Button in List)
+
+            // 1. Edit Profile
             _buildMenuItem(
               context,
               icon: Icons.person_outline,
@@ -221,7 +234,9 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               onTap: () async {
                 final result = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => InstructorEditProfilePage(user: _user)),
+                  MaterialPageRoute(
+                    builder: (_) => InstructorEditProfilePage(user: _user),
+                  ),
                 );
                 if (result == true) _loadUserData();
               },
@@ -235,12 +250,14 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const InstructorAnalyticsPage()),
+                  MaterialPageRoute(
+                    builder: (context) => const InstructorAnalyticsPage(),
+                  ),
                 );
               },
             ),
-            
-            // 3. Settings (Linked to Main Settings Page)
+
+            // 3. Settings
             _buildMenuItem(
               context,
               icon: Icons.settings_outlined,
@@ -260,14 +277,20 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               title: 'Help & Support',
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Help & Support page coming soon')),
+                  const SnackBar(
+                    content: Text('Help & Support page coming soon'),
+                  ),
                 );
               },
             ),
 
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppTheme.spacingM),
-              child: Divider(color: isDark ? Colors.grey.shade800 : Colors.grey.shade200),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.spacingM,
+              ),
+              child: Divider(
+                color: isDark ? Colors.grey.shade800 : Colors.grey.shade200,
+              ),
             ),
 
             // 5. Logout
@@ -298,10 +321,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          label,
-          style: theme.textTheme.bodyMedium,
-        ),
+        Text(label, style: theme.textTheme.bodyMedium),
       ],
     );
   }
@@ -327,8 +347,8 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(
-        horizontal: AppTheme.spacingL, 
-        vertical: 4
+        horizontal: AppTheme.spacingL,
+        vertical: 4,
       ),
       leading: Container(
         padding: const EdgeInsets.all(8),

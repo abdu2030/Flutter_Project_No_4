@@ -25,53 +25,81 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
+  // ✅ 1. EMAIL LOGIN
   void login() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
-      // 1. Login user
       final user = await _authService.login(
         emailController.text.trim(),
         passwordController.text.trim(),
       );
 
       if (user != null) {
-        // 2. Get user role from Firestore
-        final role = await _authService.getUserRole(user.uid);
-
-        if (mounted) {
-          // 3. Navigate based on role
-          if (role == 'instructor') {
-            // ✅ FIX: Use pushAndRemoveUntil to wipe navigation history
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const InstructorDashboard(),
-              ),
-              (route) =>
-                  false, // This removes all previous routes (Back button exits app)
-            );
-          } else {
-            // ✅ FIX: Use pushAndRemoveUntil for students too
-            Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (context) => const StudentDashboard()),
-              (route) => false, // This removes all previous routes
-            );
-          }
-        }
+        // Fetch role and navigate
+        await _checkRoleAndNavigate(user.uid);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-          backgroundColor: Colors.red.shade400,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ 2. GOOGLE LOGIN
+  void loginWithGoogle() async {
+    setState(() => _isLoading = true);
+
+    try {
+      // We pass 'student' as default.
+      // If the user exists, AuthService ignores this and keeps their existing role.
+      // If the user is NEW, they become a Student.
+      final user = await _authService.signInWithGoogle(role: 'student');
+
+      if (user != null) {
+        await _checkRoleAndNavigate(user.uid);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: Colors.red.shade400,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // ✅ 3. HELPER: CHECK ROLE & NAVIGATE
+  Future<void> _checkRoleAndNavigate(String uid) async {
+    final role = await _authService.getUserRole(uid);
+
+    if (!mounted) return;
+
+    if (role == 'instructor') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const InstructorDashboard()),
+        (route) => false,
+      );
+    } else {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const StudentDashboard()),
+        (route) => false,
+      );
     }
   }
 
@@ -176,6 +204,60 @@ class _LoginPageState extends State<LoginPage> {
                               'Sign In',
                               style: TextStyle(fontSize: 16),
                             ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // OR DIVIDER
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Divider(color: Colors.grey.shade300, height: 1),
+                      ),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text('OR'),
+                      ),
+                      Expanded(
+                        child: Divider(color: Colors.grey.shade300, height: 1),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+
+                  // ✅ UPDATED GOOGLE BUTTON WITH ASSET IMAGE
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton(
+                      onPressed: _isLoading ? null : loginWithGoogle,
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade400),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // 🖼️ The Google Logo
+                          Image.asset(
+                            'assets/images/google.png',
+                            height: 24,
+                            width: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'Sign in with Google',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.white, // Better visibility
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),

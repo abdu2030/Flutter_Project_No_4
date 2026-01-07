@@ -30,27 +30,28 @@ class AuthService {
     }
   }
 
-  // ✅ REGISTER WITH ROLE (email & password)
+  // ✅ REGISTER (email & password)
   Future<User?> register({
     required String email,
     required String password,
     required String role,
     String? name,
+    String? phone,
   }) async {
     try {
-      // 1. Create Firebase Auth user
       final result = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 2. Create user document in Firestore
       final userModel = UserModel(
         uid: result.user!.uid,
         email: email,
         role: role,
         name: name,
         createdAt: DateTime.now(),
+        phone: phone,
+        socials: {},
       );
 
       await _firestore
@@ -58,7 +59,6 @@ class AuthService {
           .doc(result.user!.uid)
           .set(userModel.toMap());
 
-      // 3. Update display name if provided
       if (name != null && name.isNotEmpty) {
         await result.user!.updateDisplayName(name);
       }
@@ -69,73 +69,65 @@ class AuthService {
     }
   }
 
-  // ✅ REGISTER / LOGIN WITH GOOGLE + ROLE
-  //
-  // - If user logs in with Google for the first time -> create Firestore doc with given role.
-  // - If user already exists in Firestore -> keep existing role, ignore passed role.
+  // ✅ SIGN IN WITH GOOGLE (FIXED: Force Account Picker)
   Future<User?> signInWithGoogle({required String role}) async {
     try {
-      // 1. Start Google sign-in flow
+      // 1. FORCE ACCOUNT PICKER:
+      // Sign out from Google Plugin first so it doesn't auto-select the last user.
+      await _googleSignIn.signOut();
+
+      // 2. Start Google sign-in flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
-        // User cancelled the sign-in
-        throw 'Google sign-in cancelled.';
+        throw 'Google sign-in cancelled.'; // User clicked outside the dialog
       }
 
-      // 2. Get Google auth details
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      // 3. Create Firebase credential
-      final credential = GoogleAuthProvider.credential(
+      final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      // 4. Sign in to Firebase with Google credential
-      final result = await _auth.signInWithCredential(credential);
-      final user = result.user;
+      // 3. Sign in to Firebase
+      // If "One account per email" is enabled in Console, this links accounts.
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
 
-      if (user == null) {
-        throw 'Google sign-in failed. No user returned.';
-      }
+      final User? user = userCredential.user;
 
-      // 5. Ensure Firestore user document exists
-      final userDocRef = _firestore.collection('users').doc(user.uid);
-      final userDoc = await userDocRef.get();
+      if (user != null) {
+        final userDocRef = _firestore.collection('users').doc(user.uid);
+        final userDoc = await userDocRef.get();
 
-      if (!userDoc.exists) {
-        // First time Google sign-in -> treat as registration
-        final userModel = UserModel(
-          uid: user.uid,
-          email: user.email ?? '',
-          role: role, // role from UI (student / instructor)
-          name: user.displayName,
-          createdAt: DateTime.now(),
-        );
+        // 4. CRITICAL CHECK: Only create DB entry if it DOES NOT EXIST.
+        if (!userDoc.exists) {
+          final userModel = UserModel(
+            uid: user.uid,
+            email: user.email!,
+            role: role, // Use selected role for NEW users only
+            name: user.displayName,
+            profileImage: user.photoURL,
+            createdAt: DateTime.now(),
+            phone: user.phoneNumber,
+            socials: {},
+          );
 
-        await userDocRef.set(userModel.toMap());
-      } else {
-        // If the doc exists but role is missing, you can optionally set it:
-        /*
-        final data = userDoc.data();
-        if (data != null && (data['role'] == null || data['role'] == '')) {
-          await userDocRef.update({'role': role});
+          await userDocRef.set(userModel.toMap());
         }
-        */
+        // If doc exists, we do nothing to preserve existing role/data.
       }
 
       return user;
-    } on FirebaseAuthException catch (e) {
-      throw _handleAuthError(e);
     } catch (e) {
-      // For non-Firebase errors (e.g., GoogleSignIn errors)
-      throw e.toString();
+      throw Exception('Google Sign-In failed: $e');
     }
   }
 
-  // ✅ GET USER DATA FROM FIRESTORE
+  // ... (Keep existing getters and helpers)
   Future<UserModel?> getUserData(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
@@ -144,24 +136,19 @@ class AuthService {
       }
       return null;
     } catch (e) {
-      throw Exception('Failed to get user data: $e');
+      return null;
     }
   }
 
-  // ✅ GET USER ROLE
   Future<String?> getUserRole(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();
-      if (doc.exists) {
-        return doc.data()?['role'];
-      }
-      return null;
+      return doc.data()?['role'];
     } catch (e) {
-      throw Exception('Failed to get user role: $e');
+      return null;
     }
   }
 
-  // ✅ STREAM USER DATA
   Stream<UserModel?> streamUserData(String uid) {
     return _firestore.collection('users').doc(uid).snapshots().map((doc) {
       if (doc.exists && doc.data() != null) {
@@ -171,46 +158,35 @@ class AuthService {
     });
   }
 
-  // ✅ UPDATE USER PROFILE
   Future<void> updateUserProfile({
     required String uid,
     String? name,
     String? profileImage,
+    String? phone,
+    Map<String, dynamic>? socials,
   }) async {
     final updates = <String, dynamic>{};
     if (name != null) updates['name'] = name;
     if (profileImage != null) updates['profileImage'] = profileImage;
+    if (phone != null) updates['phone'] = phone;
+    if (socials != null) updates['socials'] = socials;
+    updates['updatedAt'] = FieldValue.serverTimestamp();
 
     await _firestore.collection('users').doc(uid).update(updates);
+
+    if (name != null && _auth.currentUser != null) {
+      await _auth.currentUser!.updateDisplayName(name);
+    }
   }
 
-  // ✅ LOGOUT (also sign out from Google if used)
   Future<void> logout() async {
     await _auth.signOut();
     try {
       await _googleSignIn.signOut();
-    } catch (_) {
-      // ignore Google sign-out errors
-    }
+    } catch (_) {}
   }
 
-  // ✅ ERROR HANDLER
   String _handleAuthError(FirebaseAuthException e) {
-    switch (e.code) {
-      case 'user-not-found':
-        return 'No user found with this email.';
-      case 'wrong-password':
-        return 'Wrong password provided.';
-      case 'email-already-in-use':
-        return 'Email is already registered.';
-      case 'invalid-email':
-        return 'Invalid email address.';
-      case 'weak-password':
-        return 'Password is too weak.';
-      case 'operation-not-allowed':
-        return 'Operation not allowed.';
-      default:
-        return e.message ?? 'Authentication failed.';
-    }
+    return e.message ?? 'Authentication error';
   }
 }
