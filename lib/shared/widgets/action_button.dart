@@ -16,15 +16,11 @@ class ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. ❌ REMOVED 'Expanded' from here.
-    // The parent widget (StudentHomePage) handles the expansion.
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 20),
         decoration: BoxDecoration(
-          // 2. ✅ Updated styling to match the new Dashboard look
           gradient: LinearGradient(
             colors: [color, color.withValues(alpha: 0.7)],
             begin: Alignment.topLeft,
@@ -40,7 +36,6 @@ class ActionButton extends StatelessWidget {
           ],
         ),
         child: Column(
-          // Changed to Column for better "Dashboard" look
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon, color: Colors.white, size: 28),

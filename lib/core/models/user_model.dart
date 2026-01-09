@@ -8,7 +8,7 @@ class UserModel {
   final String? profileImage;
   final DateTime createdAt;
 
-  // ✅ NEW FIELDS ADDED
+  //NEW FIELDS ADDED
   final String? phone;
   final Map<String, dynamic>? socials;
 
@@ -32,7 +32,7 @@ class UserModel {
       'name': name,
       'profileImage': profileImage,
       'createdAt': createdAt.toIso8601String(),
-      // ✅ Serialize new fields
+      // Serialize new fields
       'phone': phone,
       'socials': socials,
     };
@@ -49,7 +49,7 @@ class UserModel {
       createdAt: map['createdAt'] != null
           ? DateTime.parse(map['createdAt'])
           : DateTime.now(),
-      // ✅ Deserialize new fields
+      // Deserialize new fields
       phone: map['phone'],
       // Safely convert Map<dynamic, dynamic> to Map<String, dynamic>
       socials: map['socials'] != null

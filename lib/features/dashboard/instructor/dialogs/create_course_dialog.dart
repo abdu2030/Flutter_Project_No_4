@@ -155,14 +155,16 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final sheetHeight = MediaQuery.of(context).size.height * 0.9;
 
-    // ✅ Get theme colors for consistent dark/light mode
+    // Get theme colors
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // ✅ Define consistent colors based on theme
+    // Define consistent colors based on theme
     final backgroundColor = colorScheme.surface;
-    final cardColor = isDark ? colorScheme.surfaceContainerHighest : Colors.grey[100];
+    final cardColor = isDark
+        ? colorScheme.surfaceContainerHighest
+        : Colors.grey[100];
     final borderColor = isDark ? Colors.grey[700] : Colors.grey[300];
     final textColor = colorScheme.onSurface;
     final subtitleColor = isDark ? Colors.grey[400] : Colors.grey[600];
@@ -173,7 +175,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
     return Container(
       height: sheetHeight,
       decoration: BoxDecoration(
-        color: backgroundColor, // ✅ Theme-aware background
+        color: backgroundColor,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Material(
@@ -181,7 +183,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
         borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         child: Column(
           children: [
-            // ✅ Handle bar
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
@@ -192,7 +193,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
               ),
             ),
 
-            // ✅ Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
@@ -202,7 +202,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: textColor, // ✅ Theme-aware text
+                      color: textColor,
                     ),
                   ),
                   const Spacer(),
@@ -215,12 +215,8 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
               ),
             ),
 
-            Divider(
-              height: 1,
-              color: borderColor, // ✅ Theme-aware divider
-            ),
+            Divider(height: 1, color: borderColor),
 
-            // ✅ Form Content
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPadding),
@@ -229,7 +225,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ✅ Thumbnail Picker
+                      // Thumbnail Picker
                       InkWell(
                         onTap: _isLoading ? null : _pickThumbnail,
                         borderRadius: BorderRadius.circular(12),
@@ -237,7 +233,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                           height: 150,
                           width: double.infinity,
                           decoration: BoxDecoration(
-                            color: cardColor, // ✅ Theme-aware card
+                            color: cardColor,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: borderColor!),
                             image: _thumbnailFile != null
@@ -279,7 +275,9 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                                       shape: BoxShape.circle,
                                       boxShadow: [
                                         BoxShadow(
-                                          color: Colors.black.withOpacity(0.2),
+                                          color: Colors.black.withValues(
+                                            alpha: 0.2,
+                                          ),
                                           blurRadius: 4,
                                         ),
                                       ],
@@ -300,7 +298,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ✅ Title Field
                       TextFormField(
                         controller: _titleController,
                         enabled: !_isLoading,
@@ -324,7 +321,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ✅ Description Field
                       TextFormField(
                         controller: _descriptionController,
                         enabled: !_isLoading,
@@ -350,10 +346,8 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ✅ Category & Price Row
                       Row(
                         children: [
-                          // Category Dropdown
                           Expanded(
                             flex: 2,
                             child: DropdownButtonFormField<String>(
@@ -389,7 +383,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                           ),
                           const SizedBox(width: 12),
 
-                          // Price Field
                           Expanded(
                             child: TextFormField(
                               controller: _priceController,
@@ -414,7 +407,6 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                       ),
                       const SizedBox(height: 24),
 
-                      // ✅ Create Button
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -423,7 +415,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: colorScheme.primary,
                             disabledBackgroundColor: colorScheme.primary
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                             foregroundColor: colorScheme.onPrimary,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -474,7 +466,7 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
     );
   }
 
-  // ✅ Helper method for consistent input decoration
+  // consistent input decoration
   InputDecoration _buildInputDecoration({
     required String labelText,
     String? hintText,
@@ -484,7 +476,9 @@ class _CreateCourseDialogState extends State<CreateCourseDialog> {
     bool alignLabelWithHint = false,
   }) {
     final borderColor = isDark ? Colors.grey[700] : Colors.grey[300];
-    final fillColor = isDark ? colorScheme.surfaceContainerHighest : Colors.grey[50];
+    final fillColor = isDark
+        ? colorScheme.surfaceContainerHighest
+        : Colors.grey[50];
 
     return InputDecoration(
       labelText: labelText,

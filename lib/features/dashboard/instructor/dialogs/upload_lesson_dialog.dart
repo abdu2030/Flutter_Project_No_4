@@ -302,12 +302,11 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ Get theme colors
+    // theme colors
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // ✅ Theme-aware colors
     final backgroundColor = colorScheme.surface;
     final cardColor = isDark
         ? colorScheme.surfaceContainerHighest
@@ -318,7 +317,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
     final hintColor = isDark ? Colors.grey[500] : Colors.grey[400];
     final handleColor = isDark ? Colors.grey[600] : Colors.grey[300];
 
-    // ✅ Fixed height - doesn't change with keyboard
+    // doesn't change with keyboard
     final sheetHeight = MediaQuery.of(context).size.height * 0.9;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
@@ -332,7 +331,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
         ),
         child: Column(
           children: [
-            // ✅ Handle bar
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
@@ -343,7 +341,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
               ),
             ),
 
-            // ✅ Header
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -368,7 +365,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
 
             Divider(height: 1, color: borderColor),
 
-            // ✅ Scrollable Content with keyboard padding
+            // Scrollable Content with keyboard padding
             Expanded(
               child: SingleChildScrollView(
                 padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomPadding),
@@ -377,9 +374,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // ═══════════════════════════════════════════
                       // VIDEO PICKER
-                      // ═══════════════════════════════════════════
                       _buildSectionTitle(
                         'Video',
                         Icons.videocam,
@@ -409,9 +404,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ═══════════════════════════════════════════
                       // DOCUMENT PICKER
-                      // ═══════════════════════════════════════════
                       _buildSectionTitle(
                         'Document / Notes',
                         Icons.description,
@@ -441,12 +434,12 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                       ),
                       const SizedBox(height: 8),
 
-                      // ✅ Info hint
+                      // Info hint
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.amber.shade900.withOpacity(0.3)
+                              ? Colors.amber.shade900.withValues(alpha: 0.3)
                               : Colors.amber.shade50,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
@@ -481,9 +474,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                       ),
                       const SizedBox(height: 20),
 
-                      // ═══════════════════════════════════════════
-                      // TITLE FIELD
-                      // ═══════════════════════════════════════════
                       TextFormField(
                         controller: _titleController,
                         enabled: !_isLoading,
@@ -505,9 +495,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ═══════════════════════════════════════════
-                      // DESCRIPTION FIELD
-                      // ═══════════════════════════════════════════
                       TextFormField(
                         controller: _descriptionController,
                         enabled: !_isLoading,
@@ -524,9 +511,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                       ),
                       const SizedBox(height: 16),
 
-                      // ═══════════════════════════════════════════
-                      // FREE PREVIEW TOGGLE
-                      // ═══════════════════════════════════════════
                       Container(
                         decoration: BoxDecoration(
                           color: cardColor,
@@ -550,16 +534,13 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                               ? null
                               : (value) => _safeSetState(() => _isFree = value),
                           activeThumbColor: Colors.green,
-                          activeTrackColor: Colors.green.withOpacity(0.5),
+                          activeTrackColor: Colors.green.withValues(alpha: 0.5),
                           inactiveThumbColor: isDark ? Colors.grey[400] : null,
                           inactiveTrackColor: isDark ? Colors.grey[700] : null,
                         ),
                       ),
                       const SizedBox(height: 24),
 
-                      // ═══════════════════════════════════════════
-                      // UPLOAD PROGRESS
-                      // ═══════════════════════════════════════════
                       if (_isLoading) ...[
                         Column(
                           children: [
@@ -588,9 +569,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                         const SizedBox(height: 16),
                       ],
 
-                      // ═══════════════════════════════════════════
-                      // UPLOAD BUTTON
-                      // ═══════════════════════════════════════════
                       SizedBox(
                         width: double.infinity,
                         height: 50,
@@ -620,7 +598,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: colorScheme.primary,
                             disabledBackgroundColor: colorScheme.primary
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -641,9 +619,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // HELPER: Input Decoration
-  // ═══════════════════════════════════════════════════════════
   InputDecoration _buildInputDecoration({
     required String labelText,
     String? hintText,
@@ -696,9 +671,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // HELPER: Section Title
-  // ═══════════════════════════════════════════════════════════
   Widget _buildSectionTitle(
     String title,
     IconData icon,
@@ -738,9 +710,6 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════
-  // HELPER: File Picker Card
-  // ═══════════════════════════════════════════════════════════
   Widget _buildFilePicker({
     required File? file,
     required String? fileName,
@@ -769,7 +738,9 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: hasFile
-                ? (isDark ? color.withOpacity(0.15) : color.withOpacity(0.05))
+                ? (isDark
+                      ? color.withValues(alpha: 0.15)
+                      : color.withValues(alpha: 0.05))
                 : cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
@@ -783,7 +754,7 @@ class _UploadLessonDialogState extends State<UploadLessonDialog> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: color.withOpacity(isDark ? 0.2 : 0.1),
+                        color: color.withValues(alpha: isDark ? 0.2 : 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Icon(

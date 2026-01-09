@@ -17,7 +17,7 @@ class AuthService {
   // Auth state stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
-  // ✅ LOGIN (email & password)
+  // LOGIN (email & password)
   Future<User?> login(String email, String password) async {
     try {
       final result = await _auth.signInWithEmailAndPassword(
@@ -30,7 +30,7 @@ class AuthService {
     }
   }
 
-  // ✅ REGISTER (email & password)
+  // REGISTER (email & password)
   Future<User?> register({
     required String email,
     required String password,
@@ -69,14 +69,12 @@ class AuthService {
     }
   }
 
-  // ✅ SIGN IN WITH GOOGLE (FIXED: Force Account Picker)
+  // SIGN IN WITH GOOGLE
   Future<User?> signInWithGoogle({required String role}) async {
     try {
-      // 1. FORCE ACCOUNT PICKER:
       // Sign out from Google Plugin first so it doesn't auto-select the last user.
       await _googleSignIn.signOut();
 
-      // 2. Start Google sign-in flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       if (googleUser == null) {
@@ -91,7 +89,6 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      // 3. Sign in to Firebase
       // If "One account per email" is enabled in Console, this links accounts.
       final UserCredential userCredential = await _auth.signInWithCredential(
         credential,
@@ -103,12 +100,12 @@ class AuthService {
         final userDocRef = _firestore.collection('users').doc(user.uid);
         final userDoc = await userDocRef.get();
 
-        // 4. CRITICAL CHECK: Only create DB entry if it DOES NOT EXIST.
+        // Only create DB entry if it DOES NOT EXIST.
         if (!userDoc.exists) {
           final userModel = UserModel(
             uid: user.uid,
             email: user.email!,
-            role: role, // Use selected role for NEW users only
+            role: role, 
             name: user.displayName,
             profileImage: user.photoURL,
             createdAt: DateTime.now(),
@@ -126,8 +123,7 @@ class AuthService {
       throw Exception('Google Sign-In failed: $e');
     }
   }
-
-  // ... (Keep existing getters and helpers)
+  
   Future<UserModel?> getUserData(String uid) async {
     try {
       final doc = await _firestore.collection('users').doc(uid).get();

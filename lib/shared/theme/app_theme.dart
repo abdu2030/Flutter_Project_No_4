@@ -251,6 +251,7 @@ class AppTheme {
       primary: primaryColor,
       secondary: secondaryColor,
       surface: darkSurface,
+      // ignore: deprecated_member_use
       background: darkBackground,
       error: errorColor,
       brightness: Brightness.dark,

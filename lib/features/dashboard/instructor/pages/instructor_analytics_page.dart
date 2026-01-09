@@ -13,10 +13,8 @@ class InstructorAnalyticsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final userId = AuthService().currentUser?.uid ?? '';
     final theme = Theme.of(context);
-    //final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      // Scaffold background is handled automatically by AppTheme.lightTheme/darkTheme
       appBar: AppBar(
         title: const Text('Analytics'),
         // AppTheme handles AppBar styling, but we ensure it matches the surface
@@ -38,10 +36,8 @@ class InstructorAnalyticsPage extends StatelessWidget {
           double totalRatingSum = 0;
           int ratedCoursesCount = 0;
 
-          // 1. Create a separate list for sorting (Fixes the cascade error)
           final sortedCourses = List<CourseModel>.from(courses);
 
-          // 2. Sort the list here
           sortedCourses.sort(
             (a, b) =>
                 b.enrolledStudents.length.compareTo(a.enrolledStudents.length),
@@ -113,7 +109,6 @@ class InstructorAnalyticsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppTheme.spacingL),
 
-                // 2. GRID STATS
                 Row(
                   children: [
                     Expanded(
@@ -139,7 +134,6 @@ class InstructorAnalyticsPage extends StatelessWidget {
                 ),
                 const SizedBox(height: AppTheme.spacingXL),
 
-                // 3. TOP PERFORMING COURSES HEADER
                 Text(
                   'Top Performing Courses',
                   style: theme.textTheme.titleLarge,
@@ -157,7 +151,7 @@ class InstructorAnalyticsPage extends StatelessWidget {
                     ),
                   )
                 else
-                  // 3. Use the sorted list
+                 
                   ...sortedCourses
                       .take(5)
                       .map((course) => _buildCourseRow(context, course)),

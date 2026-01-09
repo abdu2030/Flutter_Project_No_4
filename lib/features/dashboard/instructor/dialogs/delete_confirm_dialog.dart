@@ -16,7 +16,7 @@ class DeleteConfirmDialog extends StatelessWidget {
     this.onDelete,
   });
 
-  /// Show delete confirmation dialog
+  /// delete confirmation dialog
   static Future<bool?> show(
     BuildContext context, {
     required String title,

@@ -14,7 +14,7 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-  // ✅ LOGOUT LOGIC
+  // LOGOUT LOGIC
   Future<void> _handleLogout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -36,11 +36,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
 
     if (confirm == true) {
-      // 1. Sign out from Firebase & Google
+      // Sign out from Firebase & Google
       await AuthService().logout();
 
       if (mounted) {
-        // 2. Navigate to AuthGate (Redirects to Public Home Page)
+        // Navigate to AuthGate (Redirects to Public Home Page)
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const AuthGate()),
@@ -54,7 +54,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeNotifier = ThemeProvider.of(context)!.themeNotifier;
-    //final isDark = theme.brightness == Brightness.dark;
+    
 
     return Scaffold(
       appBar: AppBar(
@@ -65,7 +65,7 @@ class _SettingsPageState extends State<SettingsPage> {
       body: ListView(
         padding: const EdgeInsets.all(AppTheme.spacingM),
         children: [
-          // 🎨 SECTION 1: APPEARANCE
+          
           _buildSectionHeader('Appearance', theme),
           Card(
             elevation: 0,
@@ -124,7 +124,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const SizedBox(height: 24),
 
-          // ⚙️ SECTION 2: GENERAL
+          // GENERAL
           _buildSectionHeader('General', theme),
           Card(
             elevation: 0,
@@ -139,7 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: const Text('Notifications'),
                   trailing: Switch(
                     value: true,
-                    onChanged: (val) {}, // Todo: Implement Notifications
+                    onChanged: (val) {}, // Todo: Implement Notifications(for future versions)
                     activeThumbColor: AppTheme.primaryColor,
                   ),
                 ),
@@ -171,7 +171,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           const SizedBox(height: 24),
 
-          // 👤 SECTION 3: ACCOUNT
+          // ACCOUNT
           _buildSectionHeader('Account', theme),
           Card(
             elevation: 0,
@@ -188,7 +188,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              onTap: _handleLogout, // ✅ Calls the secure logout function
+              onTap: _handleLogout, 
             ),
           ),
         ],

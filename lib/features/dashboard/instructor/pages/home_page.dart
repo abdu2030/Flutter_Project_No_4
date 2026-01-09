@@ -21,24 +21,18 @@ class InstructorHomePage extends StatelessWidget {
     final userId = authService.currentUser?.uid ?? '';
     final theme = Theme.of(context);
 
-    // We calculate isDark here if we need it for the main build method,
-    // otherwise the sub-widgets calculate it themselves.
-    // final isDark = theme.brightness == Brightness.dark;
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(AppTheme.spacingM),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ✅ This Header now handles the Profile Click internally
             const DashboardHeader(
               roleText: 'Instructor 🎓',
               icon: Icons.cast_for_education,
             ),
             const SizedBox(height: AppTheme.spacingL),
 
-            // ✅ Stats Row
             StreamBuilder<List<CourseModel>>(
               stream: courseService.getInstructorCourses(userId),
               builder: (context, snapshot) {
@@ -85,7 +79,6 @@ class InstructorHomePage extends StatelessWidget {
             ),
             const SizedBox(height: AppTheme.spacingL),
 
-            // ✅ Quick Actions
             Row(
               children: [
                 Expanded(
@@ -127,11 +120,9 @@ class InstructorHomePage extends StatelessWidget {
             ),
             const SizedBox(height: AppTheme.spacingL),
 
-            // Recent Courses Header
             Text('Recent Courses', style: theme.textTheme.titleLarge),
             const SizedBox(height: AppTheme.spacingM),
 
-            // ✅ Course List
             StreamBuilder<List<CourseModel>>(
               stream: courseService.getInstructorCourses(userId),
               builder: (context, snapshot) {
@@ -156,7 +147,6 @@ class InstructorHomePage extends StatelessWidget {
     );
   }
 
-  // ✅ Stat Card
   Widget _buildHighContrastStatCard(
     BuildContext context, {
     required String title,
@@ -205,7 +195,6 @@ class InstructorHomePage extends StatelessWidget {
     );
   }
 
-  // ✅ Course Card
   Widget _buildCourseCard(BuildContext context, CourseModel course) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -215,9 +204,9 @@ class InstructorHomePage extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-        // 1. Light Mode Shadow
+        // Light Mode Shadow
         boxShadow: isDark ? null : AppTheme.shadowSmall,
-        // 2. Dark Mode Border
+        // Dark Mode Border
         border: isDark
             ? Border.all(color: Colors.white.withValues(alpha: 0.1))
             : null,

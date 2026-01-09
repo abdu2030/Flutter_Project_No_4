@@ -1,5 +1,3 @@
-// lib/core/models/lesson_model.dart
-
 enum LessonType { video, document, quiz }
 
 class LessonModel {
@@ -8,8 +6,8 @@ class LessonModel {
   final String title;
   final String? description;
   final LessonType type;
-  final String? videoUrl; // ✅ Can have video
-  final String? documentUrl; // ✅ Can have document (both at same time!)
+  final String? videoUrl; 
+  final String? documentUrl; 
   final String? thumbnailUrl;
   final int duration;
   final int orderIndex;
@@ -31,7 +29,7 @@ class LessonModel {
     required this.createdAt,
   });
 
-  // ✅ Check what content the lesson has
+  //Check what content the lesson has
   bool get hasVideo => videoUrl != null && videoUrl!.isNotEmpty;
   bool get hasDocument => documentUrl != null && documentUrl!.isNotEmpty;
   bool get hasBoth => hasVideo && hasDocument;

@@ -14,7 +14,7 @@ import 'package:eduvox/features/dashboard/student/pages/edit_profile_page.dart';
 class StudentProfilePage extends ConsumerWidget {
   const StudentProfilePage({super.key});
 
-  // ✅ Logout Function
+  //Logout Function
   Future<void> _handleLogout(BuildContext context) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -36,11 +36,9 @@ class StudentProfilePage extends ConsumerWidget {
     );
 
     if (confirm == true) {
-      // 1. Use AuthService to sign out (Clears Firebase AND Google)
       await AuthService().logout();
 
       if (context.mounted) {
-        // 2. Navigate to AuthGate (Which detects null user and shows HomePage)
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const AuthGate()),
           (route) => false,
@@ -71,7 +69,7 @@ class StudentProfilePage extends ConsumerWidget {
               userAsync.when(
                 data: (user) => _buildProfileHeader(user, isDark),
                 loading: () => const CircularProgressIndicator(),
-                error: (_, __) => const Text('Error loading profile'),
+                error: (_, _) => const Text('Error loading profile'),
               ),
               const SizedBox(height: 24),
 
@@ -79,7 +77,7 @@ class StudentProfilePage extends ConsumerWidget {
               statsAsync.when(
                 data: (stats) => _buildStatsCard(stats, isDark),
                 loading: () => const SizedBox(),
-                error: (_, __) => const SizedBox(),
+                error: (_, _) => const SizedBox(),
               ),
               const SizedBox(height: 24),
 
@@ -113,11 +111,10 @@ class StudentProfilePage extends ConsumerWidget {
                 isDark: isDark,
               ),
 
-              // ✅ Updated Logout Item
               _buildMenuItem(
                 icon: Icons.logout_rounded,
                 title: 'Logout',
-                onTap: () => _handleLogout(context), // Call helper function
+                onTap: () => _handleLogout(context), 
                 isDark: isDark,
                 isDestructive: true,
               ),
@@ -197,7 +194,7 @@ class StudentProfilePage extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -207,9 +204,9 @@ class StudentProfilePage extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildStatItem('${stats.enrolled}', 'Enrolled', isDark),
-          Container(height: 40, width: 1, color: Colors.grey.withOpacity(0.2)),
+          Container(height: 40, width: 1, color: Colors.grey.withValues(alpha: 0.2)),
           _buildStatItem('${stats.completed}', 'Completed', isDark),
-          Container(height: 40, width: 1, color: Colors.grey.withOpacity(0.2)),
+          Container(height: 40, width: 1, color: Colors.grey.withValues(alpha: 0.2)),
           _buildStatItem('${stats.inProgress}', 'Active', isDark),
         ],
       ),
@@ -260,8 +257,8 @@ class StudentProfilePage extends ConsumerWidget {
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: isDestructive
-                ? AppTheme.errorColor.withOpacity(0.1)
-                : AppTheme.primaryColor.withOpacity(0.1),
+                ? AppTheme.errorColor.withValues(alpha: 0.1)
+                : AppTheme.primaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(

@@ -7,9 +7,6 @@ import '../models/lesson_model.dart';
 class CourseService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // ==============================================================================
-  // ✅ FOR STUDENTS: Get Only Published Courses
-  // ==============================================================================
   Stream<List<CourseModel>> getPublishedCourses() {
     return _firestore
         .collection('courses')
@@ -26,9 +23,6 @@ class CourseService {
         });
   }
 
-  // ==============================================================================
-  // ✅ FOR STUDENTS: Get Enrolled Courses (My Learning)
-  // ==============================================================================
   Stream<List<Map<String, dynamic>>> getEnrolledCourses(String userId) {
     return _firestore
         .collection('users')
@@ -41,9 +35,6 @@ class CourseService {
         });
   }
 
-  // ==============================================================================
-  // ✅ FOR INSTRUCTORS: Get All Courses (Drafts + Published)
-  // ==============================================================================
   Stream<List<CourseModel>> getInstructorCourses(String instructorId) {
     if (instructorId.isEmpty) return Stream.value([]);
 
@@ -61,13 +52,13 @@ class CourseService {
         });
   }
 
-  // ✅ Create course
+  //Create course
   Future<CourseModel> createCourse(CourseModel course) async {
     await _firestore.collection('courses').doc(course.id).set(course.toMap());
     return course;
   }
 
-  // ✅ Get single course
+  // Get single course
   Future<CourseModel?> getCourse(String courseId) async {
     final doc = await _firestore.collection('courses').doc(courseId).get();
     if (doc.exists && doc.data() != null) {
@@ -76,7 +67,6 @@ class CourseService {
     return null;
   }
 
-  // ✅ Update course
   Future<void> updateCourse(CourseModel course) async {
     await _firestore
         .collection('courses')
@@ -84,7 +74,6 @@ class CourseService {
         .update(course.toMap());
   }
 
-  // ✅ Delete course
   Future<void> deleteCourse(String courseId) async {
     final lessons = await _firestore
         .collection('courses')
@@ -98,7 +87,6 @@ class CourseService {
     await _firestore.collection('courses').doc(courseId).delete();
   }
 
-  // ✅ Toggle publish
   Future<void> togglePublish(String courseId, bool isPublished) async {
     await _firestore.collection('courses').doc(courseId).update({
       'isPublished': isPublished,
@@ -106,7 +94,6 @@ class CourseService {
     });
   }
 
-  // ✅ Get lessons for course (Stream)
   Stream<List<LessonModel>> getCourseLessons(String courseId) {
     return _firestore
         .collection('courses')
@@ -123,7 +110,6 @@ class CourseService {
         });
   }
 
-  // ✅ Get lessons once
   Future<List<LessonModel>> getCourseLessonsOnce(String courseId) async {
     final snapshot = await _firestore
         .collection('courses')
@@ -139,7 +125,6 @@ class CourseService {
     return lessons;
   }
 
-  // ✅ Add lesson
   Future<LessonModel> addLesson(LessonModel lesson) async {
     await _firestore
         .collection('courses')
@@ -152,7 +137,6 @@ class CourseService {
     return lesson;
   }
 
-  // ✅ Update lesson
   Future<void> updateLesson(LessonModel lesson) async {
     await _firestore
         .collection('courses')
@@ -161,8 +145,6 @@ class CourseService {
         .doc(lesson.id)
         .update(lesson.toMap());
   }
-
-  // ✅ Delete lesson
   Future<void> deleteLesson(String courseId, String lessonId) async {
     await _firestore
         .collection('courses')
@@ -173,8 +155,6 @@ class CourseService {
 
     await _updateCourseStats(courseId);
   }
-
-  // ✅ Update course stats (Internal Helper)
   Future<void> _updateCourseStats(String courseId) async {
     final lessons = await getCourseLessonsOnce(courseId);
 
@@ -187,10 +167,6 @@ class CourseService {
       'updatedAt': DateTime.now().toIso8601String(),
     });
   }
-
-  // --------------------------------------------------------------------------
-  // ✅ RATE OR UPDATE COURSE (Logic Fixed)
-  // --------------------------------------------------------------------------
   Future<void> rateCourse(
     String courseId,
     String userId,
@@ -215,21 +191,17 @@ class CourseService {
       double currentTotalScore = currentAvgRating * currentReviewCount;
 
       if (userReviewSnapshot.exists) {
-        // 🔄 CASE 1: UPDATE EXISTING RATING
+        //1. UPDATE EXISTING RATING
         final reviewData = userReviewSnapshot.data() as Map<String, dynamic>;
         double previousUserRating = (reviewData['rating'] ?? 0.0).toDouble();
 
-        // 1. Remove old rating
-        // 2. Add new rating
         double newTotalScore =
             currentTotalScore - previousUserRating + newRating;
 
-        // 3. Recalculate average (Count does not change)
         double newAvg = newTotalScore / currentReviewCount;
 
         transaction.update(courseRef, {
           'rating': newAvg,
-          // reviewCount stays the same
         });
 
         transaction.update(userReviewRef, {
@@ -237,7 +209,7 @@ class CourseService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
       } else {
-        // ➕ CASE 2: NEW RATING
+        //2. NEW RATING
         double newTotalScore = currentTotalScore + newRating;
         int newReviewCount = currentReviewCount + 1;
         double newAvg = newTotalScore / newReviewCount;

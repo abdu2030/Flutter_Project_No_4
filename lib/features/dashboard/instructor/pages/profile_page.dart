@@ -9,8 +9,6 @@ import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/features/dashboard/instructor/pages/instructor_analytics_page.dart';
 import 'package:eduvox/features/settings/settings_page.dart';
 import 'package:eduvox/features/dashboard/instructor/pages/instructor_edit_profile_page.dart';
-
-// ✅ IMPORT AUTH GATE
 import 'package:eduvox/features/auth/auth_gate.dart';
 
 class InstructorProfilePage extends StatefulWidget {
@@ -50,7 +48,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     }
   }
 
-  // ✅ UPDATED LOGOUT LOGIC
   Future<void> _logout() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -72,11 +69,9 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
     );
 
     if (confirm == true) {
-      // 1. Sign out from Firebase & Google
       await _authService.logout();
 
       if (mounted) {
-        // 2. Navigate to AuthGate (Redirects to Home Page)
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const AuthGate()),
@@ -104,7 +99,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: () async {
-              // Navigate to Edit Profile and reload data on return
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -136,7 +130,9 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
                   // Avatar
                   CircleAvatar(
                     radius: 50,
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    backgroundColor: AppTheme.primaryColor.withValues(
+                      alpha: 0.1,
+                    ),
                     backgroundImage: _user?.profileImage != null
                         ? NetworkImage(_user!.profileImage!)
                         : null,
@@ -154,18 +150,15 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
                   ),
                   const SizedBox(height: AppTheme.spacingM),
 
-                  // Name
                   Text(
                     _user?.name ?? 'Instructor',
                     style: theme.textTheme.headlineMedium,
                   ),
                   const SizedBox(height: 4),
 
-                  // Email
                   Text(_user?.email ?? '', style: theme.textTheme.bodyMedium),
                   const SizedBox(height: AppTheme.spacingM),
 
-                  // Role Badge
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -188,7 +181,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               ),
             ),
 
-            // --- STATS ROW ---
             StreamBuilder<List<CourseModel>>(
               stream: _courseService.getInstructorCourses(userId),
               builder: (context, snapshot) {
@@ -224,9 +216,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               color: isDark ? const Color(0xFF121212) : Colors.grey.shade100,
             ),
 
-            // --- MENU ITEMS ---
-
-            // 1. Edit Profile
             _buildMenuItem(
               context,
               icon: Icons.person_outline,
@@ -242,7 +231,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               },
             ),
 
-            // 2. Analytics
             _buildMenuItem(
               context,
               icon: Icons.analytics_outlined,
@@ -257,7 +245,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               },
             ),
 
-            // 3. Settings
             _buildMenuItem(
               context,
               icon: Icons.settings_outlined,
@@ -270,7 +257,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               },
             ),
 
-            // 4. Help (Placeholder)
             _buildMenuItem(
               context,
               icon: Icons.help_outline,
@@ -293,7 +279,6 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
               ),
             ),
 
-            // 5. Logout
             _buildMenuItem(
               context,
               icon: Icons.logout,
@@ -353,7 +338,7 @@ class _InstructorProfilePageState extends State<InstructorProfilePage> {
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: (color ?? AppTheme.primaryColor).withOpacity(0.1),
+          color: (color ?? AppTheme.primaryColor).withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(icon, color: color ?? AppTheme.primaryColor, size: 22),

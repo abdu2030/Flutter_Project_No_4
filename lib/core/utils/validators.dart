@@ -1,5 +1,5 @@
 class Validators {
-  // 🔐 Email validation
+  //Email validation
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Email is required';
@@ -14,7 +14,7 @@ class Validators {
     return null;
   }
 
-  // 🔐 Password validation
+  // Password validation
   static String? password(String? value) {
     if (value == null || value.isEmpty) {
       return 'Password is required';
@@ -27,7 +27,7 @@ class Validators {
     return null;
   }
 
-  // 👤 Name validation
+  // Name validation
   static String? name(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'This field is required';
@@ -40,7 +40,7 @@ class Validators {
     return null;
   }
 
-  // 📘 Course title validation
+  // Course title validation
   static String? courseTitle(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Course title is required';
@@ -48,7 +48,7 @@ class Validators {
     return null;
   }
 
-  // 💰 Price validation
+  // Price validation
   static String? price(String? value) {
     if (value == null || value.trim().isEmpty) {
       return 'Price is required';

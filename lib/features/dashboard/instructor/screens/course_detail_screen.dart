@@ -9,7 +9,6 @@ import 'package:eduvox/core/services/course_service.dart';
 import 'package:eduvox/core/services/storage_service.dart';
 import 'package:eduvox/shared/screens/document_viewer_screen.dart';
 import 'package:eduvox/shared/screens/video_player_screen.dart';
-// ✅ Import Students Page
 import 'package:eduvox/features/dashboard/instructor/pages/students_page.dart';
 import '../dialogs/upload_lesson_dialog.dart';
 import '../dialogs/delete_confirm_dialog.dart';
@@ -273,34 +272,27 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
                       _buildStatsSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Description
                       _buildDescriptionSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Enrolled Students (Clickable)
                       _buildEnrolledStudentsSection(isDark),
                       const SizedBox(height: 24),
 
-                      // Action Button (Publish/Unpublish only)
                       _buildPublishActionButton(isDark),
                       const SizedBox(height: 24),
 
-                      // Lessons Header
                       _buildLessonsHeader(isDark),
                       const SizedBox(height: 12),
                     ]),
                   ),
                 ),
 
-                // Lessons List
                 _buildLessonsList(isDark),
 
-                // Bottom Padding
                 const SliverToBoxAdapter(child: SizedBox(height: 80)),
               ],
             ),
       floatingActionButton: _buildFAB(),
-      // ❌ REMOVED BOTTOM BAR
     );
   }
 
@@ -437,7 +429,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== PUBLISH STATUS CARD ====================
   Widget _buildPublishStatusCard(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -510,23 +501,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== QUICK STATS (DYNAMIC) ====================
   Widget _buildQuickStats(bool isDark) {
-    // ✅ 1. Calculate Real Earnings (Dynamic)
+    // Calculate Real Earnings (Dynamic)
     final totalEarnings = _course.enrolledStudents.length * _course.price;
 
     return Row(
       children: [
         _buildQuickStatCard(
           'Total Revenue',
-          // Format as currency
+
           '\$${totalEarnings.toStringAsFixed(0)}',
           Icons.attach_money_rounded,
           Colors.green,
           isDark,
         ),
         const SizedBox(width: 12),
-        // ✅ 2. Show Price Per Student instead of "This Month" (Since we lack date data)
+
         _buildQuickStatCard(
           'Price / Student',
           _course.price == 0 ? 'Free' : '\$${_course.price.toStringAsFixed(0)}',
@@ -598,7 +588,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== STATS SECTION (DYNAMIC) ====================
   Widget _buildStatsSection(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -625,7 +614,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _buildDivider(isDark),
           _buildStatItem(
             Icons.access_time_rounded,
-            '${_course.totalDuration}', // ✅ Dynamic Minutes
+            '${_course.totalDuration}',
             'Minutes',
             Colors.blue,
           ),
@@ -639,7 +628,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           _buildDivider(isDark),
           _buildStatItem(
             Icons.star_rounded,
-            _course.rating.toStringAsFixed(1), // ✅ Dynamic Rating
+            _course.rating.toStringAsFixed(1),
             'Rating',
             AppTheme.warning,
           ),
@@ -682,7 +671,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== DESCRIPTION SECTION ====================
   Widget _buildDescriptionSection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -741,12 +729,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== ENROLLED STUDENTS (NAVIGATES TO STUDENTS PAGE) ====================
   Widget _buildEnrolledStudentsSection(bool isDark) {
     final studentCount = _course.enrolledStudents.length;
 
     return GestureDetector(
-      // ✅ NAVIGATE TO STUDENTS PAGE
+      // NAVIGATE TO STUDENTS PAGE
       onTap: () {
         Navigator.push(
           context,
@@ -834,7 +821,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== PUBLISH ACTION BUTTON (REPLACED THE ROW) ====================
   Widget _buildPublishActionButton(bool isDark) {
     return SizedBox(
       width: double.infinity,
@@ -876,7 +862,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== LESSONS HEADER ====================
   Widget _buildLessonsHeader(bool isDark) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -901,7 +886,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== LESSONS LIST ====================
   Widget _buildLessonsList(bool isDark) {
     return StreamBuilder<List<LessonModel>>(
       stream: _courseService.getCourseLessons(_course.id),
@@ -1175,7 +1159,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== FAB ====================
+
   Widget _buildFAB() {
     return FloatingActionButton.extended(
       onPressed: _addLesson,
@@ -1189,7 +1173,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
     );
   }
 
-  // ==================== HELPER METHODS ====================
   void _showContentOptions(LessonModel lesson) {
     showModalBottomSheet(
       context: context,

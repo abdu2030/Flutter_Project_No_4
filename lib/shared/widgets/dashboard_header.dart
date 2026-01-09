@@ -23,7 +23,6 @@ class DashboardHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Left Side: Greeting
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -48,10 +47,8 @@ class DashboardHeader extends StatelessWidget {
           ],
         ),
 
-        // 👉 RIGHT SIDE: CLICKABLE PROFILE PICTURE
         GestureDetector(
           onTap: () {
-            // ✅ This is where the navigation happens
             Navigator.push(
               context,
               MaterialPageRoute(

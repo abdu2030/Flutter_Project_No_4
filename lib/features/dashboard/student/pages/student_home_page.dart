@@ -80,7 +80,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
                         ],
                       ),
 
-                      // ✅ CLICKABLE PROFILE ICON
                       GestureDetector(
                         onTap: () {
                           // Navigate to Edit Profile Page
@@ -122,7 +121,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // --- SEARCH BAR ---
                   TextField(
                     controller: _searchController,
                     onChanged: (value) => setState(() => _searchQuery = value),
@@ -149,7 +147,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
               ),
             ),
 
-            // 2. SCROLLABLE BODY
             Expanded(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
@@ -277,7 +274,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
 
                     const SizedBox(height: 24),
 
-                    // --- SECTION TITLE ---
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Row(
@@ -301,7 +297,6 @@ class _StudentHomePageState extends State<StudentHomePage> {
                     ),
                     const SizedBox(height: 16),
 
-                    // --- COURSE LIST ---
                     _buildCourseList(isDark),
 
                     const SizedBox(height: 80),
@@ -393,7 +388,7 @@ class _StudentHomePageState extends State<StudentHomePage> {
             ? null
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),

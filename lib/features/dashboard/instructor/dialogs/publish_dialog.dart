@@ -8,7 +8,7 @@ class PublishDialog extends StatelessWidget {
 
   const PublishDialog({super.key, required this.course});
 
-  /// Show publish/unpublish confirmation dialog
+  /// publish/unpublish confirmation dialog
   static Future<bool?> show(BuildContext context, CourseModel course) {
     return showDialog<bool>(
       context: context,

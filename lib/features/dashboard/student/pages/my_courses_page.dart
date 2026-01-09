@@ -93,7 +93,6 @@ class MyCoursesPage extends ConsumerWidget {
             ),
             const SizedBox(width: 14),
 
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,7 +118,6 @@ class MyCoursesPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
 
-                  // Progress Bar
                   Row(
                     children: [
                       Expanded(

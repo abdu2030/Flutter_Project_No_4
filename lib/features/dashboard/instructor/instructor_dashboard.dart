@@ -20,11 +20,11 @@ class _InstructorDashboardState extends State<InstructorDashboard>
     with SingleTickerProviderStateMixin {
   int _currentIndex = 0;
 
-  // ✅ Initialize controller and animation as nullable
+  // Initialize controller and animation as nullable
   AnimationController? _fabAnimationController;
   Animation<double>? _fabScaleAnimation;
 
-  // ✅ List of pages for each tab
+  // List of pages for each tab
   final List<Widget> _pages = [
     const InstructorHomePage(),
     const MyCoursesPage(),
@@ -87,10 +87,8 @@ class _InstructorDashboardState extends State<InstructorDashboard>
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
 
-      // ✅ Body with IndexedStack
       body: IndexedStack(index: _currentIndex, children: _pages),
 
-      // ✅ Enhanced Bottom Navigation
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: theme.colorScheme.surface,
@@ -110,14 +108,13 @@ class _InstructorDashboardState extends State<InstructorDashboard>
         ),
       ),
 
-      // ✅ Beautiful animated FAB with null check
       floatingActionButton: showFab ? _buildFab() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
   Widget _buildFab() {
-    // ✅ Safe null check for animation
+    // null check for animation
     if (_fabScaleAnimation == null) {
       return _buildFabContent();
     }

@@ -34,12 +34,8 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
     super.initState();
     _nameController = TextEditingController(text: widget.user?.name ?? '');
 
-    // Check if phone exists in user model, otherwise empty
-    // Note: You might need to add 'phone' to your UserModel definition if missing
     _phoneController = TextEditingController(text: widget.user?.phone ?? '');
 
-    // Initialize Socials (Assuming user model might allow accessing raw data or map)
-    // If your UserModel doesn't have a 'socials' map yet, these will start empty.
     final socials = widget.user?.socials ?? {};
     _websiteController = TextEditingController(text: socials['website'] ?? '');
     _linkedinController = TextEditingController(
@@ -117,7 +113,6 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // --- 1. AVATAR SECTION ---
               Center(
                 child: Column(
                   children: [
@@ -131,7 +126,9 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
                       },
                       child: CircleAvatar(
                         radius: 50,
-                        backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
+                        backgroundColor: AppTheme.primaryColor.withValues(
+                          alpha: 0.1,
+                        ),
                         backgroundImage: widget.user?.profileImage != null
                             ? NetworkImage(widget.user!.profileImage!)
                             : null,
@@ -156,7 +153,6 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
               ),
               const SizedBox(height: 30),
 
-              // --- 2. PERSONAL INFO ---
               Text(
                 'Personal Information',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -187,7 +183,6 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
 
               const SizedBox(height: 30),
 
-              // --- 3. SOCIAL LINKS ---
               Text(
                 'Social Links',
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -233,7 +228,6 @@ class _InstructorEditProfilePageState extends State<InstructorEditProfilePage> {
 
               const SizedBox(height: 40),
 
-              // --- 4. SAVE BUTTON ---
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

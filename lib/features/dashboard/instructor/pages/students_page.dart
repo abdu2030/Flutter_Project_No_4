@@ -18,7 +18,6 @@ class _StudentsPageState extends State<StudentsPage> {
   final CourseService _courseService = CourseService();
   final AuthService _authService = AuthService();
 
-  // Selected Filter
   String? _selectedCourseId;
 
   @override
@@ -38,20 +37,16 @@ class _StudentsPageState extends State<StudentsPage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          // 2. No Data
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return _buildEmptyState();
           }
 
           final allCourses = snapshot.data!;
 
-          // 3. Filter Logic
-          // If a course is selected in dropdown, use only that. Otherwise use all.
           final filteredCourses = _selectedCourseId != null
               ? allCourses.where((c) => c.id == _selectedCourseId).toList()
               : allCourses;
 
-          // 4. Extract Unique Student IDs
           final Set<String> studentIds = {};
           for (var course in filteredCourses) {
             studentIds.addAll(course.enrolledStudents);
@@ -59,7 +54,6 @@ class _StudentsPageState extends State<StudentsPage> {
 
           return Column(
             children: [
-              // --- FILTER DROPDOWN ---
               Container(
                 padding: const EdgeInsets.all(16),
                 child: DropdownButtonFormField<String?>(
@@ -97,7 +91,6 @@ class _StudentsPageState extends State<StudentsPage> {
                 ),
               ),
 
-              // --- STUDENT LIST ---
               Expanded(
                 child: studentIds.isEmpty
                     ? _buildNoStudentsState()
@@ -157,10 +150,6 @@ class _StudentsPageState extends State<StudentsPage> {
   }
 }
 
-// ---------------------------------------------------------------------------
-// ✅ SEPARATE WIDGET FOR FETCHING USER DETAILS
-// This separates the UI logic from the data fetching logic to prevent refresh loops
-// ---------------------------------------------------------------------------
 class _StudentListBuilder extends StatelessWidget {
   final List<String> studentIds;
   final List<CourseModel> allInstructorCourses;
@@ -170,7 +159,7 @@ class _StudentListBuilder extends StatelessWidget {
     required this.allInstructorCourses,
   });
 
-  // Optimized Fetching: Uses 'whereIn' to fetch 10 students at a time
+  // Uses 'whereIn' to fetch 10 students at a time
   Future<List<UserModel>> _fetchStudentsEfficiently() async {
     if (studentIds.isEmpty) return [];
 
@@ -240,9 +229,6 @@ class _StudentListBuilder extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// ✅ STUDENT CARD WIDGET
-// ---------------------------------------------------------------------------
 class _StudentCard extends StatelessWidget {
   final UserModel student;
   final List<CourseModel> enrolledCourses;
@@ -291,7 +277,7 @@ class _StudentCard extends StatelessWidget {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(

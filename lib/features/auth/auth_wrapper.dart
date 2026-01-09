@@ -15,7 +15,7 @@ class AuthWrapper extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
-        // Show loading while checking auth state
+        
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const LoadingScreen();
         }
@@ -32,7 +32,7 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
-// ✅ Separate widget to handle role-based routing
+// Separate widget to handle role-based routing
 class RoleRouter extends StatefulWidget {
   final String userId;
 
@@ -85,8 +85,6 @@ class _RoleRouterState extends State<RoleRouter> {
     return const StudentDashboard();
   }
 }
-
-// ✅ Simple loading screen
 class LoadingScreen extends StatelessWidget {
   const LoadingScreen({super.key});
 

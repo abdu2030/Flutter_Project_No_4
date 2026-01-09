@@ -15,19 +15,17 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    debugPrint('✅ Firebase initialized successfully');
   } catch (e) {
-    debugPrint('❌ Firebase initialization failed: $e');
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
   }
 
-  // 1. Load the saved theme from storage BEFORE the app starts
+  // Load the saved theme from storage BEFORE the app starts
   final prefs = await SharedPreferences.getInstance();
   final String? savedThemeString = prefs.getString('theme_mode');
 
-  // 2. Convert string to ThemeMode
+  // Convert string to ThemeMode
   ThemeMode initialTheme = ThemeMode.system;
   if (savedThemeString == 'ThemeMode.dark') initialTheme = ThemeMode.dark;
   if (savedThemeString == 'ThemeMode.light') initialTheme = ThemeMode.light;
@@ -49,10 +47,10 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // 3. Initialize the notifier with the saved value
+    // Initialize the notifier with the saved value
     themeNotifier = ValueNotifier(widget.initialTheme);
 
-    // 4. Listen for changes and save them
+    // Listen for changes and save them
     themeNotifier.addListener(() async {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('theme_mode', themeNotifier.value.toString());
@@ -74,12 +72,12 @@ class _MyAppState extends State<MyApp> {
           title: 'EduVox',
           debugShowCheckedModeBanner: false,
 
-          // 🎨 Themes
+          // Themes
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: currentTheme,
 
-          // 🔧 Theme Provider Injection
+          // Theme Provider Injection
           builder: (context, child) {
             return ThemeProvider(themeNotifier: themeNotifier, child: child!);
           },
@@ -91,7 +89,7 @@ class _MyAppState extends State<MyApp> {
   }
 }
 
-// 🛠️ Theme Provider
+// Theme Provider
 class ThemeProvider extends InheritedWidget {
   final ValueNotifier<ThemeMode> themeNotifier;
 

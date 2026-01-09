@@ -16,7 +16,7 @@ class CourseModel {
   final DateTime updatedAt;
   final bool isPublished;
 
-  // ✅ 1. Add Rating Fields
+  // Rating Fields
   final double rating;
   final int reviewCount;
 
@@ -36,7 +36,7 @@ class CourseModel {
     required this.updatedAt,
     this.isPublished = false,
 
-    // ✅ 2. Initialize with defaults
+    // Initialize with defaults
     this.rating = 0.0,
     this.reviewCount = 0,
   });
@@ -58,7 +58,7 @@ class CourseModel {
       'updatedAt': updatedAt.toIso8601String(),
       'isPublished': isPublished,
 
-      // ✅ 3. Save to Map
+      //Save to Map
       'rating': rating,
       'reviewCount': reviewCount,
     };
@@ -85,7 +85,7 @@ class CourseModel {
           : DateTime.now(),
       isPublished: map['isPublished'] ?? false,
 
-      // ✅ 4. Load from Map (Safely handle int/double conversion)
+      // Safely handle int/double conversion
       rating: (map['rating'] ?? 0.0).toDouble(),
       reviewCount: map['reviewCount'] ?? 0,
     );
@@ -120,7 +120,7 @@ class CourseModel {
       updatedAt: DateTime.now(),
       isPublished: isPublished ?? this.isPublished,
 
-      // ✅ 5. Update in CopyWith
+      //Update in CopyWith
       rating: rating ?? this.rating,
       reviewCount: reviewCount ?? this.reviewCount,
     );

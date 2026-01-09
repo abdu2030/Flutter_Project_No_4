@@ -28,10 +28,10 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
 
-  // ✅ ROLE SELECTION
+  // ROLE SELECTION
   String _selectedRole = 'student';
 
-  // ✅ EMAIL/PASSWORD REGISTER
+  // EMAIL/PASSWORD REGISTER
   void register() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -68,7 +68,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // ✅ GOOGLE REGISTER (WITH STRICT ROLE CHECK)
+  // GOOGLE REGISTER (WITH STRICT ROLE CHECK)
   void registerWithGoogle() async {
     setState(() => _isLoading = true);
 
@@ -77,12 +77,10 @@ class _RegisterPageState extends State<RegisterPage> {
       final user = await _authService.signInWithGoogle(role: _selectedRole);
 
       if (user != null && mounted) {
-        // 2. 🛑 STRICT CHECK: Get the ACTUAL role from Firestore
         final String? storedRole = await _authService.getUserRole(user.uid);
 
-        // 3. Compare: If DB says 'instructor' but user selected 'student' (or vice versa)
         if (storedRole != null && storedRole != _selectedRole) {
-          // 🛑 Mismatch detected! Sign them out immediately.
+          // 3. Role Mismatch - Logout and Show Error
           await _authService.logout();
 
           if (mounted) {
@@ -112,10 +110,10 @@ class _RegisterPageState extends State<RegisterPage> {
               ),
             );
           }
-          return; // ⛔ Stop execution here. Do not navigate.
+          return;
         }
 
-        // 4. ✅ Success
+        // Success
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -140,7 +138,7 @@ class _RegisterPageState extends State<RegisterPage> {
     }
   }
 
-  // ✅ HELPER: Navigate to correct dashboard
+  // Navigate to correct dashboard
   void _navigateToDashboard() {
     if (_selectedRole == 'instructor') {
       Navigator.pushAndRemoveUntil(
@@ -199,11 +197,9 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 32),
 
-                  // ✅ ROLE SELECTION CARD
                   _buildRoleSelector(),
                   const SizedBox(height: 24),
 
-                  // Name Field
                   TextFormField(
                     controller: nameController,
                     textCapitalization: TextCapitalization.words,
@@ -223,7 +219,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Email Field
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -238,7 +233,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Password Field
                   TextFormField(
                     controller: passwordController,
                     obscureText: _obscurePassword,
@@ -263,7 +257,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Confirm Password Field
                   TextFormField(
                     controller: confirmPasswordController,
                     obscureText: _obscureConfirm,
@@ -295,7 +288,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Register Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -329,7 +321,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // OR divider
                   Row(
                     children: [
                       Expanded(
@@ -346,7 +337,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // ✅ GOOGLE REGISTER BUTTON (Updated with Asset Image)
+                  //GOOGLE REGISTER BUTTON
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -383,7 +374,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Login Link
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,
@@ -400,7 +390,6 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  // ✅ ROLE SELECTOR WIDGET
   Widget _buildRoleSelector() {
     return Container(
       decoration: BoxDecoration(
@@ -409,7 +398,6 @@ class _RegisterPageState extends State<RegisterPage> {
       ),
       child: Row(
         children: [
-          // Student Option
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedRole = 'student'),
@@ -459,7 +447,6 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           ),
 
-          // Instructor Option
           Expanded(
             child: GestureDetector(
               onTap: () => setState(() => _selectedRole = 'instructor'),

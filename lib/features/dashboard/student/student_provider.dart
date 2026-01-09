@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-// ✅ Enrolled Course Model (Matches Firestore data structure)
+// Enrolled Course Model (Matches Firestore data structure)
 class EnrolledCourse {
   final String id; // The Course ID
   final String title;
@@ -24,7 +24,7 @@ class EnrolledCourse {
 
   factory EnrolledCourse.fromMap(Map<String, dynamic> map, String id) {
     return EnrolledCourse(
-      id: id, // This is the document ID (Course ID)
+      id: id, // (Course ID)
       title: map['title'] ?? 'Untitled Course',
       instructorName: map['instructorName'] ?? 'Unknown',
       progress: (map['progress'] ?? 0.0).toDouble(),
@@ -35,7 +35,7 @@ class EnrolledCourse {
   }
 }
 
-// ✅ Student Stats Model
+// Student Stats Model
 class StudentStats {
   final int enrolled;
   final int completed;
@@ -44,12 +44,12 @@ class StudentStats {
   StudentStats({this.enrolled = 0, this.completed = 0, this.inProgress = 0});
 }
 
-// 1️⃣ Current User Stream
+// Current User Stream
 final currentUserProvider = StreamProvider<User?>((ref) {
   return FirebaseAuth.instance.userChanges();
 });
 
-// 2️⃣ Enrolled Courses Stream
+// Enrolled Courses Stream
 final enrolledCoursesProvider = StreamProvider<List<EnrolledCourse>>((ref) {
   final user = FirebaseAuth.instance.currentUser;
   if (user == null) return Stream.value([]);
@@ -67,7 +67,6 @@ final enrolledCoursesProvider = StreamProvider<List<EnrolledCourse>>((ref) {
       );
 });
 
-// 3️⃣ Calculated Stats
 final studentStatsProvider = Provider<AsyncValue<StudentStats>>((ref) {
   final coursesAsync = ref.watch(enrolledCoursesProvider);
 

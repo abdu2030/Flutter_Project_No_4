@@ -2,7 +2,6 @@
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-//import 'package:eduvox/core/theme/app_theme.dart'; // ✅ Corrected Import
 
 // Shared App Bar
 class CourseDetailAppBar extends StatelessWidget {
@@ -15,7 +14,7 @@ class CourseDetailAppBar extends StatelessWidget {
     super.key,
     required this.title,
     this.imageUrl,
-    this.accentColor = AppTheme.primaryColor, // ✅ Uses new getter
+    this.accentColor = AppTheme.primaryColor,
     this.actions,
   });
 
@@ -173,7 +172,7 @@ class CourseStatsRow extends StatelessWidget {
         ),
         Text(
           label,
-          // ✅ Updated to use correct dark mode text color
+
           style: TextStyle(
             color: isDark ? AppTheme.darkTextSecondary : AppTheme.textSecondary,
             fontSize: 11,
@@ -260,7 +259,7 @@ class InstructorInfoCard extends StatelessWidget {
                     'Instructor',
                     style: TextStyle(
                       fontSize: 12,
-                      // ✅ Check for dark mode
+
                       color: isDark
                           ? AppTheme.darkTextSecondary
                           : AppTheme.textSecondary,
@@ -427,7 +426,7 @@ class LessonTile extends StatelessWidget {
             Icon(
               Icons.access_time_rounded,
               size: 14,
-              // ✅ Updated to use correct dark mode text color
+
               color: isLocked
                   ? Colors.grey.shade400
                   : (isDark
@@ -439,7 +438,7 @@ class LessonTile extends StatelessWidget {
               isLocked ? 'Locked' : '$duration min',
               style: TextStyle(
                 fontSize: 12,
-                // ✅ Updated to use correct dark mode text color
+
                 color: isLocked
                     ? Colors.grey.shade400
                     : (isDark

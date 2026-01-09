@@ -69,9 +69,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ),
                       TextButton(
-                        onPressed: () {
-                          // TODO: Navigate to 'All Courses'
-                        },
+                        onPressed: () {},
                         child: const Text(
                           'See All',
                           style: TextStyle(
@@ -95,7 +93,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ BEAUTIFIED APP BAR
   AppBar _buildAppBar(
     BuildContext context,
     User? user,
@@ -109,7 +106,7 @@ class _HomePageState extends State<HomePage> {
       ),
       centerTitle: false,
       actions: [
-        // Settings Icon
+        
         IconButton(
           icon: Icon(
             Icons.settings_outlined,
@@ -125,9 +122,9 @@ class _HomePageState extends State<HomePage> {
 
         const SizedBox(width: 4),
 
-        // 🛑 AUTH BUTTONS LOGIC
+        // AUTH BUTTONS LOGIC
         if (user == null) ...[
-          // 1. Login Button (Clean Text)
+          // Login Button (Clean Text)
           TextButton(
             onPressed: () => Navigator.push(
               context,
@@ -142,9 +139,9 @@ class _HomePageState extends State<HomePage> {
 
           const SizedBox(width: 8),
 
-          // 2. Sign Up Button (Highlighted Pill)
+          // Sign Up Button 
           SizedBox(
-            height: 36, // Fixed height for alignment
+            height: 36, 
             child: ElevatedButton(
               onPressed: () => Navigator.push(
                 context,
@@ -165,9 +162,9 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
-          const SizedBox(width: 16), // Right padding
+          const SizedBox(width: 16), 
         ] else ...[
-          // 🛑 LOGGED IN PROFILE ICON
+          // LOGGED IN PROFILE ICON
           PopupMenuButton<String>(
             offset: const Offset(0, 50),
             icon: Container(
@@ -285,7 +282,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ HERO SECTION
+  // HERO SECTION
   Widget _buildHeroSection(User? user) {
     return Container(
       width: double.infinity,
@@ -324,7 +321,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ SEARCH BAR
+  // SEARCH BAR
   Widget _buildSearchBar(bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -342,7 +339,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ GRID
+  // GRID
   Widget _buildCourseGrid(ThemeData theme, bool isDark) {
     return StreamBuilder<QuerySnapshot>(
       // 1. Query Firestore for published courses
@@ -364,7 +361,7 @@ class _HomePageState extends State<HomePage> {
         final filteredDocs = docs.where((doc) {
           final data = doc.data() as Map<String, dynamic>;
 
-          // ✅ STRICT CHECK: Ensure isPublished is strictly true
+          // Ensure isPublished is strictly true
           final bool isPublished = data['isPublished'] == true;
 
           final title = (data['title'] ?? '').toString().toLowerCase();
@@ -403,7 +400,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // ✅ CARD
+  // CARD
   Widget _courseCard(
     Map<String, dynamic> data,
     String courseId,

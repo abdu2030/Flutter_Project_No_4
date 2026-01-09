@@ -244,7 +244,6 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Description
               TextFormField(
                 controller: _descriptionController,
                 enabled: !_isLoading,
@@ -269,7 +268,6 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Category
               DropdownButtonFormField<String>(
                 initialValue: _selectedCategory,
                 decoration: InputDecoration(
@@ -293,7 +291,6 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Price
               TextFormField(
                 controller: _priceController,
                 enabled: !_isLoading,
@@ -308,7 +305,6 @@ class _EditCourseScreenState extends State<EditCourseScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Save Button
               SizedBox(
                 width: double.infinity,
                 height: 50,

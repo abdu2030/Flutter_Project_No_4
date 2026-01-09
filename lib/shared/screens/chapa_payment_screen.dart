@@ -167,6 +167,7 @@ class _ChapaPaymentScreenState extends State<ChapaPaymentScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // ignore: deprecated_member_use
     return WillPopScope(
       onWillPop: _onWillPop,
       child: Scaffold(
@@ -207,7 +208,7 @@ class _ChapaPaymentScreenState extends State<ChapaPaymentScreen> {
               margin: const EdgeInsets.only(right: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: AppTheme.primaryColor.withOpacity(0.1),
+                color: AppTheme.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
@@ -240,8 +241,8 @@ class _ChapaPaymentScreenState extends State<ChapaPaymentScreen> {
             if (_isLoading)
               Container(
                 color: isDark
-                    ? AppTheme.darkBackground.withOpacity(0.8)
-                    : Colors.white.withOpacity(0.8),
+                    ? AppTheme.darkBackground.withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.8),
                 child: const Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -258,8 +259,8 @@ class _ChapaPaymentScreenState extends State<ChapaPaymentScreen> {
             if (_isVerifying)
               Container(
                 color: isDark
-                    ? AppTheme.darkBackground.withOpacity(0.9)
-                    : Colors.white.withOpacity(0.9),
+                    ? AppTheme.darkBackground.withValues(alpha: 0.9)
+                    : Colors.white.withValues(alpha: 0.9),
                 child: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -267,7 +268,7 @@ class _ChapaPaymentScreenState extends State<ChapaPaymentScreen> {
                       Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: AppTheme.primaryColor.withOpacity(0.1),
+                          color: AppTheme.primaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const CircularProgressIndicator(

@@ -19,13 +19,9 @@ class StatCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // 1. ❌ REMOVED 'Expanded' from here.
-    // The parent widget handles the layout.
-
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        // 2. ✅ Updated styling to match AppTheme (Card style)
         color: isDark ? AppTheme.darkSurface : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.shadowSmall,

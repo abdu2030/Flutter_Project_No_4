@@ -9,9 +9,9 @@ import 'package:uuid/uuid.dart';
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:eduvox/core/models/course_model.dart';
 import 'package:eduvox/core/models/lesson_model.dart';
-import 'package:eduvox/core/models/user_model.dart'; // ✅ Needed for profile
+import 'package:eduvox/core/models/user_model.dart'; 
 import 'package:eduvox/core/services/course_service.dart';
-import 'package:eduvox/core/services/auth_service.dart'; // ✅ Needed for profile fetch
+import 'package:eduvox/core/services/auth_service.dart'; 
 import 'package:eduvox/core/services/chapa_service.dart';
 
 // Widgets & Screens
@@ -33,11 +33,11 @@ class StudentCourseDetailPage extends StatefulWidget {
 }
 
 class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
-  // Services
+  
   final CourseService _courseService = CourseService();
   final String _currentUserId = FirebaseAuth.instance.currentUser!.uid;
 
-  // State Variables
+  
   String? _currentUserEmail;
   String? _currentUserFirstName;
   String? _currentUserLastName;
@@ -57,7 +57,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     _loadUserData();
   }
 
-  // --- DATA LOADING ---
+ 
 
   Future<void> _loadUserData() async {
     try {
@@ -109,7 +109,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
           }
         }
 
-        // Fetch user rating
+        
         final reviewDoc = await FirebaseFirestore.instance
             .collection('courses')
             .doc(widget.courseId)
@@ -158,7 +158,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     }
   }
 
-  // --- INSTRUCTOR PROFILE MODAL ---
+
 
   void _showInstructorProfile() {
     showModalBottomSheet(
@@ -992,7 +992,7 @@ class _StudentCourseDetailPageState extends State<StudentCourseDetailPage> {
     );
   }
 
-  // ✅ 2. Helper for the colored badges (Video, Doc, Free)
+  // Helper for the colored badges (Video, Doc, Free)
   Widget _buildContentBadge(String text, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

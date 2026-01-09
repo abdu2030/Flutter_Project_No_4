@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  // ✅ 1. EMAIL LOGIN
+  // EMAIL LOGIN
   void login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -55,7 +55,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ✅ 2. GOOGLE LOGIN
+  // GOOGLE LOGIN
   void loginWithGoogle() async {
     setState(() => _isLoading = true);
 
@@ -82,7 +82,7 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // ✅ 3. HELPER: CHECK ROLE & NAVIGATE
+  // HELPER: CHECK ROLE & NAVIGATE
   Future<void> _checkRoleAndNavigate(String uid) async {
     final role = await _authService.getUserRole(uid);
 
@@ -127,12 +127,8 @@ class _LoginPageState extends State<LoginPage> {
                     height: 100,
                     width: 100,
                     decoration: BoxDecoration(
-                      color: Theme.of(
-                        context,
-                      ).cardColor, // Optional: Background for transparency
-                      borderRadius: BorderRadius.circular(
-                        20,
-                      ), // Rounded corners
+                      color: Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.1),
@@ -144,7 +140,7 @@ class _LoginPageState extends State<LoginPage> {
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(20),
                       child: Image.asset(
-                        'assets/icon/icon.png', // 👈 Your App Icon Path
+                        'assets/icon/icon.png',
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -164,7 +160,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Email Field
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -179,7 +174,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Password Field
                   TextFormField(
                     controller: passwordController,
                     obscureText: _obscurePassword,
@@ -204,7 +198,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Login Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -229,7 +222,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // OR DIVIDER
                   Row(
                     children: [
                       Expanded(
@@ -246,7 +238,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // ✅ UPDATED GOOGLE BUTTON WITH ASSET IMAGE
+                  // GOOGLE BUTTON WITH IMAGE
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -262,7 +254,6 @@ class _LoginPageState extends State<LoginPage> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // 🖼️ The Google Logo
                           Image.asset(
                             'assets/images/google.png',
                             height: 24,
@@ -287,7 +278,6 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Register Link
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,

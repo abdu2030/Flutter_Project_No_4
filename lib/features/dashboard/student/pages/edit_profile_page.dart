@@ -24,7 +24,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   bool _isLoading = false;
 
   // ☁️ Cloudinary Configuration
-  // REPLACE THESE WITH YOUR ACTUAL VALUES
   final cloudinary = CloudinaryPublic(
     'dljqnuaep',
     'eduvox_uploads',
@@ -63,7 +62,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     try {
       String? photoUrl = _currentUser.photoURL;
 
-      // 1. ☁️ Upload Image to Cloudinary (if selected)
+      // Upload Image to Cloudinary (if selected)
       if (_imageFile != null) {
         try {
           CloudinaryResponse response = await cloudinary.uploadFile(
@@ -80,7 +79,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       // 2. Update Firebase Auth (Display Name & Photo URL)
-      // Note: Firebase Auth stores the URL string, it doesn't care where the image is hosted.
       await _currentUser.updateDisplayName(_nameController.text.trim());
       if (photoUrl != null) {
         await _currentUser.updatePhotoURL(photoUrl);
@@ -189,7 +187,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 32),
 
-              // 📝 Name Input
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -203,7 +200,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
               const SizedBox(height: 16),
 
-              // 📧 Email Input (Read-only)
               TextFormField(
                 initialValue: _currentUser?.email,
                 readOnly: true,
@@ -216,7 +212,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       : Colors.grey.shade100,
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: Colors.grey.withOpacity(0.3)),
+                    borderSide: BorderSide(
+                      color: Colors.grey.withValues(alpha: 0.3),
+                    ),
                   ),
                 ),
               ),

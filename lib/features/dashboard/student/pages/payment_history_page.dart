@@ -145,7 +145,7 @@ class PaymentHistoryPage extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -228,7 +228,7 @@ class PaymentHistoryPage extends StatelessWidget {
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 color: isDark
-                    ? Colors.white.withOpacity(0.05)
+                    ? Colors.white.withValues(alpha: 0.05)
                     : Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(8),
               ),
