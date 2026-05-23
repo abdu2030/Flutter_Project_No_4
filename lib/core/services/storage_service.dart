@@ -1,5 +1,3 @@
-// lib/core/services/storage_service.dart
-
 import 'dart:io';
 import 'package:cloudinary_public/cloudinary_public.dart';
 import '../config/cloudinary_config.dart';
