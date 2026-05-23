@@ -1,10 +1,7 @@
-// lib/features/auth/login_page.dart
-
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/validators.dart';
-import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
-import 'package:eduvox/features/dashboard/instructor/instructor_dashboard.dart';
+import 'package:eduvox/features/auth/auth_gate.dart';
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -25,7 +22,6 @@ class _LoginPageState extends State<LoginPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
 
-  // EMAIL LOGIN
   void login() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -37,9 +33,8 @@ class _LoginPageState extends State<LoginPage> {
         passwordController.text.trim(),
       );
 
-      if (user != null) {
-        // Fetch role and navigate
-        await _checkRoleAndNavigate(user.uid);
+      if (user != null && mounted) {
+        _navigateToAuthGate();
       }
     } catch (e) {
       if (mounted) {
@@ -55,18 +50,16 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // GOOGLE LOGIN
+  // 2. GOOGLE LOGIN
   void loginWithGoogle() async {
     setState(() => _isLoading = true);
 
     try {
-      // We pass 'student' as default.
-      // If the user exists, AuthService ignores this and keeps their existing role.
-      // If the user is NEW, they become a Student.
+      // Pass 'student' as default role for new users
       final user = await _authService.signInWithGoogle(role: 'student');
 
-      if (user != null) {
-        await _checkRoleAndNavigate(user.uid);
+      if (user != null && mounted) {
+        _navigateToAuthGate();
       }
     } catch (e) {
       if (mounted) {
@@ -82,25 +75,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  // HELPER: CHECK ROLE & NAVIGATE
-  Future<void> _checkRoleAndNavigate(String uid) async {
-    final role = await _authService.getUserRole(uid);
-
-    if (!mounted) return;
-
-    if (role == 'instructor') {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const InstructorDashboard()),
-        (route) => false,
-      );
-    } else {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const StudentDashboard()),
-        (route) => false,
-      );
-    }
+  // ✅ HELPER: Navigate to AuthGate
+  // We send the user to AuthGate so it can handle the Role check
+  // and ensure Firestore permissions are ready before showing the dashboard.
+  void _navigateToAuthGate() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => const AuthGate()),
+      (route) => false,
+    );
   }
 
   @override
@@ -112,6 +95,8 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -142,6 +127,11 @@ class _LoginPageState extends State<LoginPage> {
                       child: Image.asset(
                         'assets/icon/icon.png',
                         fit: BoxFit.cover,
+                        errorBuilder: (c, o, s) => Icon(
+                          Icons.school,
+                          size: 50,
+                          color: Theme.of(context).primaryColor,
+                        ),
                       ),
                     ),
                   ),
@@ -160,6 +150,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 40),
 
+                  // Email Field
                   TextFormField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -174,6 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Password Field
                   TextFormField(
                     controller: passwordController,
                     obscureText: _obscurePassword,
@@ -198,6 +190,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Login Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -222,6 +215,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
+                  // Divider
                   Row(
                     children: [
                       Expanded(
@@ -238,7 +232,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 24),
 
-                  // GOOGLE BUTTON WITH IMAGE
+                  // Google Button
                   SizedBox(
                     width: double.infinity,
                     height: 50,
@@ -264,11 +258,7 @@ class _LoginPageState extends State<LoginPage> {
                             'Sign in with Google',
                             style: TextStyle(
                               fontSize: 16,
-                              color:
-                                  Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? Colors.white
-                                  : Colors.black87,
+                              color: isDark ? Colors.white : Colors.black87,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -278,6 +268,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Register Link
                   TextButton(
                     onPressed: () => Navigator.push(
                       context,
