@@ -1,5 +1,3 @@
-// lib/features/dashboard/instructor/pages/course_detail_screen.dart
-
 import 'package:eduvox/shared/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -1047,33 +1045,37 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> {
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Padding(
+         subtitle: Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: Row(
+          child: Wrap(
+            spacing: 8, // Horizontal space between items
+            runSpacing: 4, // Vertical space between lines
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Icon(
-                Icons.access_time_rounded,
-                size: 14,
-                color: isDark ? Colors.white38 : Colors.grey,
+              // 1. Time Indicator (Kept in a small Row to stay together)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.access_time_rounded,
+                    size: 14,
+                    color: isDark ? Colors.white38 : Colors.grey,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${lesson.duration} min',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white54 : AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                'Lesson ${index + 1}',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? Colors.white54 : AppTheme.textSecondary,
-                ),
-              ),
-              const SizedBox(width: 12),
+
+              // 2. Badges
               if (hasVideo) _buildContentBadge('Video', Colors.red),
-              if (hasDoc) ...[
-                const SizedBox(width: 6),
-                _buildContentBadge('Doc', Colors.blue),
-              ],
-              if (lesson.isFree) ...[
-                const SizedBox(width: 6),
-                _buildContentBadge('Free', AppTheme.success),
-              ],
+              if (hasDoc) _buildContentBadge('Doc', Colors.blue),
+              if (lesson.isFree) _buildContentBadge('Free', AppTheme.success),
             ],
           ),
         ),
