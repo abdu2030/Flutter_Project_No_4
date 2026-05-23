@@ -49,17 +49,23 @@ flutter run
 
 ## 📸 Screenshots
 
-<a href="assets/images/home_page.jpg">
-  <img src="assets/images/home_page.jpg" width="200">
+<a href="assets/images/screenshots/home_page.jpg">
+  <img src="assets/images/screenshots/home_page.jpg" width="200">
 </a>
-<a href="assets/images/course_detail.jpg">
-  <img src="assets/images/course_detail.jpg" width="200">
+<a href="assets/images/screenshots/instrucor _page.jpg.jpg">
+  <img src="assets/images/screenshots/log_in.jpg" width="200">
 </a>
-<a href="assets/images/dashboard.jpg">
-  <img src="assets/images/dashboard.jpg" width="200">
+<a href="assets/images/screenshots/setting.jpg">
+  <img src="assets/images/screenshots/setting.jpg" width="200">
 </a>
-<a href="assets/images/payment.jpg">
-  <img src="assets/images/payment.jpg" width="200">
+<a href="assets/images/screenshots/sign_in.jpg">
+  <img src="assets/images/screenshots/sign_in.jpg" width="200">
+<a href="assets/images/screenshots/sign_in1.jpg">
+  <img src="assets/images/screenshots/sign_in1.jpg" width="200">
+<a href="assets/images/screenshots/student_page1.jpg">
+  <img src="assets/images/screenshots/student_page1.jpg" width="200">
+<a href="assets/images/screenshots/student_page2.jpg">
+  <img src="assets/images/screenshots/student_page2.jpg" width="200">
 </a>
 
 ## 🌐 Live Demo & Downloads
