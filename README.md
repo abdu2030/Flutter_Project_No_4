@@ -70,11 +70,11 @@ flutter run
 
 ## 🌐 Live Demo & Downloads
 
-- **[Live Web Demo](add-your-web-demo-link-here)**
-- **[APK Download](add-your-apk-download-link-here)**
-- **[Demo Video](add-your-youtube-video-link-here)**
+- **[Live Web Demo](https://mellow-cranachan-2094de.netlify.app)**
+- **[APK Download](https://drive.google.com/file/d/1IAspyiSbZYpNdbMTI1zBoYgZ5otRrM4p/view?usp=sharing)**
+
 
 ## 👤 Author
 
 **Abdulkerim Adem**  
-[GitHub](https://github.com/yourusername) | [Email](mailto:abdulkerimadem453@gmail.com)
+[GitHub](https://github.com/abdu2030) | [Email](mailto:abdulkerimadem453@gmail.com)
