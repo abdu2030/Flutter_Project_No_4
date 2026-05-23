@@ -1,5 +1,3 @@
-// lib/features/auth/register_page.dart
-
 import 'package:eduvox/features/auth/login_page.dart';
 import 'package:eduvox/features/dashboard/instructor/instructor_dashboard.dart';
 import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
