@@ -1,9 +1,7 @@
-// lib/features/auth/auth_gate.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:eduvox/core/services/auth_service.dart';
-import 'package:eduvox/features/home/home_page.dart'; 
+import 'package:eduvox/features/home/home_page.dart';
 import 'package:eduvox/features/dashboard/student/student_dashboard.dart';
 import 'package:eduvox/features/dashboard/instructor/instructor_dashboard.dart';
 
